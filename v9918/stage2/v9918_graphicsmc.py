@@ -50,15 +50,17 @@ class V9918:
             self.render_line_mc(surface, y)
 
     def render_line_mc(self, surface, y):
-        cy = y // (8 * 4)
-        py = (y % (8 * 4)) // 4
-        for cx in range(self.COLS):
-            ptn_no = self.name_table[cy * self.COLS + cx]
-            pattern = self.pattern_table[ptn_no]
-            x = cx * 8
-            bits = pattern[py]
+        py = (y % 32) // 4
+        name = (y // 32) * self.COLS
+        x = 0
+        for _ in range(self.COLS):
+            ptn_no = self.name_table[name]
+            name += 1
+            bits = self.pattern_table[ptn_no][py]
             pygame.draw.rect(surface, self.PALETTE[bits&0xf], (x,y,4,4))
-            pygame.draw.rect(surface, self.PALETTE[(bits>>4)&0xf], (x+4,y,4,4))
+            x += 4
+            pygame.draw.rect(surface, self.PALETTE[(bits>>4)&0xf], (x,y,4,4))
+            x += 4
 if __name__ == "__main__":
     vdp = V9918()
     def machine(rom):

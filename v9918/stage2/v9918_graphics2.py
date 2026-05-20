@@ -48,29 +48,21 @@ class V9918:
         for y in range(self.SCREEN_HEIGHT):
             self.render_line_graphics2(surface, y)
     def render_line_graphics2(self, surface, y):
-        cy = y // 8
         py = y % 8
-        for cx in range(self.COLS):
-            # Graphics2 bank selection
-            bank = cy // 8
-            base_char = self.name_table[cy * self.COLS + cx]
-            char_no = base_char + (bank * 256)
-            pattern = self.pattern_table[char_no]
+        bank = y // 64
+        name = (y // 8) * self.COLS
+        x = 0
+        for _ in range(self.COLS):
+            char_no = self.name_table[name] + (bank * 256)
+            name += 1
+            bits = self.pattern_table[char_no][py]
             color = self.color_table[char_no][py]
-            fg = (color >> 4) & 0x0F
-            bg = color & 0x0F
-            fg_color = self.PALETTE[fg]
-            bg_color = self.PALETTE[bg]
-            bits = pattern[py]
+            fg_color = self.PALETTE[(color >> 4) & 0x0F]
+            bg_color = self.PALETTE[color & 0x0F]
             for px in range(8):
-                mask = 0x80 >> px
-                if bits & mask:
-                    c = fg_color
-                else:
-                    c = bg_color
-                x = cx * 8 + px
-                y = cy * 8 + py
+                c = fg_color if bits & (0x80 >> px) else bg_color
                 surface.set_at((x, y), c)
+                x += 1
 if __name__ == "__main__":
     vdp = V9918()
     def machine(rom):

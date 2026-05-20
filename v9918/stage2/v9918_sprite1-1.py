@@ -35,14 +35,11 @@ class V9918:
                 "x": 0,
                 "y": 0,
                 "pattern": 0,
-                "color": 0,
+                "color": 0
             })
         self.sprite_patterns = [[0] * 8 for _ in range(self.SPRITE_PATTERN_COUNT)]
         self.sprite_mag = False
         self.sprite_size16 = False
-        self.sprite_5s = False
-        self.sprite_5s_index = 0
-        self.sprite_collision = False
     def set_sprite_pattern(self, ch, data):
         for i in range(8):
             self.sprite_patterns[ch][i] = data[i]
@@ -62,27 +59,17 @@ class V9918:
         self.sprites[no]["color"] = color
     def render_sprite1(self, surface):
         surface.fill((0, 0, 0))
-        self.sprite_5s = False
-        self.sprite_5s_index = 0
         for y in range(self.SCREEN_HEIGHT):
             self.render_line_sprites(surface, y)
     def render_line_sprites(self, surface, y):
         sprites_on_line = 0
-        draw_log = [0] * self.SCREEN_WIDTH
-        for i, spr in enumerate(self.sprites):
-            if spr["y"] == 208: return
-            color_byte = spr["color"]
-            color_index = color_byte & 0x0F
-            if color_index == 0: continue
-            color = self.PALETTE[color_index]
+        for spr in reversed(self.sprites):
+            color = self.PALETTE[spr["color"]]
             mag = 2 if self.sprite_mag else 1
             size = 16 * mag if self.sprite_size16 else 8 * mag
             if not (spr["y"] <= y < spr["y"] + size): continue
             sprites_on_line += 1
-            if sprites_on_line > 4:
-                self.sprite_5s = True
-                self.sprite_5s_index = i
-                return
+            if sprites_on_line > 4: break
             py = y - spr["y"]
             if mag == 2: py >>= 1
             if self.sprite_size16:
@@ -94,17 +81,12 @@ class V9918:
             else:
                 blocks = [spr["pattern"]]
             x = spr["x"]
-            if color_byte & 0x80: x -= 32
             for pat_no in blocks:
                 bits = self.sprite_patterns[pat_no][py]
                 for px in range(8):
                     for _ in range(mag):
                         if 0 <= x < self.SCREEN_WIDTH and (bits & (0x80 >> px)):
-                            if draw_log[x] == 0:
-                                draw_log[x] = color_index
-                                surface.set_at((x, y), color)
-                            else:
-                                self.sprite_collision = True
+                            surface.set_at((x, y), color)
                         x += 1
 if __name__ == "__main__":
     vdp = V9918()
@@ -126,10 +108,6 @@ if __name__ == "__main__":
                     sys.exit()
             rom.run(frame)
             vdp.render_sprite1(screen)
-            if vdp.sprite_collision:
-                print("SPRITE COLLISION")
-            if vdp.sprite_5s:
-                print(f"SPRITE OVERFLOW: 5th sprite={vdp.sprite_5s_index}")
             scaled = pygame.transform.scale(
                 screen,
                 (vdp.SCREEN_WIDTH * SCALE, vdp.SCREEN_HEIGHT * SCALE)

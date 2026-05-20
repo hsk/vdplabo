@@ -35,14 +35,11 @@ class V9918:
                 "x": 0,
                 "y": 0,
                 "pattern": 0,
-                "color": 15,
-                "enable": False,
+                "color": 0
             })
-        # Global sprite mode flags
+        self.sprite_patterns = [[0] * 8 for _ in range(self.SPRITE_PATTERN_COUNT)]
         self.sprite_mag = False
         self.sprite_size16 = False
-        # Sprite pattern generator table
-        self.sprite_patterns = [[0] * 8 for _ in range(self.SPRITE_PATTERN_COUNT)]
     def set_sprite_pattern(self, ch, data):
         for i in range(8):
             self.sprite_patterns[ch][i] = data[i]
@@ -60,12 +57,9 @@ class V9918:
         self.sprites[no]["y"] = y
         self.sprites[no]["pattern"] = pattern
         self.sprites[no]["color"] = color
-        self.sprites[no]["enable"] = True
     def render_sprite1(self, surface):
         surface.fill((0, 0, 0))
-        for spr in self.sprites:
-            if not spr["enable"]:
-                continue
+        for spr in reversed(self.sprites):
             color = self.PALETTE[spr["color"]]
             blocks = [(0, 0, spr["pattern"])]
             if self.sprite_size16:
@@ -200,8 +194,8 @@ if __name__ == "__main__":
                 self.mode = (self.mode + 1) & 3
                 vdp.sprite_size16 = self.mode >= 2
                 vdp.sprite_mag = (self.mode % 2) == 1
-            base_size = 16 if vdp.sprite_size16 else 8
-            size = base_size * 2 if vdp.sprite_mag else base_size
+            size = 16 if vdp.sprite_size16 else 8
+            size = size * 2 if vdp.sprite_mag else size
             if frame % 180 == 0:
                 for i, s in enumerate(self.sps):
                     if s["x"] >= 256 - size: s["x"] = 256 - size - 1

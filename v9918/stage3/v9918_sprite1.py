@@ -27,25 +27,21 @@ class V9918:
         (204, 204, 204),   # 14 Gray
         (255, 255, 255),   # 15 White
     ]
+    
     def __init__(self):
-        # Sprite attribute table
-        self.sprites = []
-        for i in range(self.SPRITE_COUNT):
-            self.sprites.append({
-                "x": 0,
-                "y": 0,
-                "pattern": 0,
-                "color": 0,
-            })
-        self.sprite_patterns = [[0] * 8 for _ in range(self.SPRITE_PATTERN_COUNT)]
+        self.vram = bytearray(16 * 1024)
+        self.sprite_pattern_table = 0x1b00
+        self.sprite_attribute_table = 0x3800
         self.sprite_mag = False
         self.sprite_size16 = False
         self.sprite_5s = False
         self.sprite_5s_index = 0
         self.sprite_collision = False
     def set_sprite_pattern(self, ch, data):
+        addr = self.sprite_pattern_table + ch * 8
         for i in range(8):
-            self.sprite_patterns[ch][i] = data[i]
+            self.vram[addr] = data[i]
+            addr += 1
     def set_sprite_pattern16x16(self, ch, data):
         base = ch & 0xFC
         p = [[],[],[],[]]
@@ -55,11 +51,12 @@ class V9918:
             p[1+(y//8)*2].append(row & 0xFF)
         for i in range(4):
             self.set_sprite_pattern(base + i, p[i])
-    def set_sprite(self, no, x, y, pattern, color):
-        self.sprites[no]["x"] = x
-        self.sprites[no]["y"] = y
-        self.sprites[no]["pattern"] = pattern
-        self.sprites[no]["color"] = color
+    def set_sprite(self, no, x, y, pattern, color, ec = False):
+        addr = self.sprite_attribute_table + no * 4
+        self.vram[addr + 0] = y & 0xff
+        self.vram[addr + 1] = x & 0xff
+        self.vram[addr + 2] = pattern & 0xff
+        self.vram[addr + 3] = (color | (128 if ec else 0)) & 0xff
     def render_sprite1(self, surface):
         surface.fill((0, 0, 0))
         self.sprite_5s = False
@@ -69,37 +66,42 @@ class V9918:
     def render_line_sprites(self, surface, y):
         sprites_on_line = 0
         draw_log = [0] * self.SCREEN_WIDTH
-        for i, spr in enumerate(self.sprites):
-            if spr["y"] == 208: return
-            color_byte = spr["color"]
+        attr_addr = self.sprite_attribute_table
+        for i in range(32):
+            spr_y = self.vram[attr_addr + 0]
+            x = self.vram[attr_addr + 1]
+            spr_ptn = self.vram[attr_addr + 2]
+            color_byte = self.vram[attr_addr + 3]
+            attr_addr += 4
+            if spr_y == 208: return
+            spr_y = (spr_y + 1) & 255
             color_index = color_byte & 0x0F
             if color_index == 0: continue
             color = self.PALETTE[color_index]
+            if color_byte & 0x80: x -= 32
             mag = 2 if self.sprite_mag else 1
             size = 16 * mag if self.sprite_size16 else 8 * mag
-            if not (spr["y"] <= y < spr["y"] + size): continue
+            if not (spr_y <= y < spr_y + size): continue
             sprites_on_line += 1
             if sprites_on_line > 4:
                 self.sprite_5s = True
                 self.sprite_5s_index = i
                 return
-            py = y - spr["y"]
+            py = y - spr_y
             if mag == 2: py >>= 1
             if self.sprite_size16:
-                spr_ptn = spr["pattern"] & 0xFC
+                spr_ptn = spr_ptn & 0xFC
                 if py >= 8:
                     spr_ptn += 2
                     py -= 8
                 blocks = [spr_ptn, spr_ptn + 1]
             else:
-                blocks = [spr["pattern"]]
-            x = spr["x"]
-            if color_byte & 0x80: x -= 32
+                blocks = [spr_ptn]
             for pat_no in blocks:
-                bits = self.sprite_patterns[pat_no][py]
+                bits = self.vram[self.sprite_pattern_table + (pat_no * 8) + py]
                 for px in range(8):
                     for _ in range(mag):
-                        if 0 <= x < self.SCREEN_WIDTH and (bits & (0x80 >> px)):
+                        if 0 <= x < self.SCREEN_WIDTH and bits & (0x80 >> px):
                             if draw_log[x] == 0:
                                 draw_log[x] = color_index
                                 surface.set_at((x, y), color)
@@ -126,6 +128,7 @@ if __name__ == "__main__":
                     sys.exit()
             rom.run(frame)
             vdp.render_sprite1(screen)
+            # Debug output for sprite status
             if vdp.sprite_collision:
                 print("SPRITE COLLISION")
             if vdp.sprite_5s:

@@ -42,7 +42,6 @@ class V9918:
         self.sprite_size16 = False
         self.sprite_5s = False
         self.sprite_5s_index = 0
-        self.sprite_collision = False
     def set_sprite_pattern(self, ch, data):
         for i in range(8):
             self.sprite_patterns[ch][i] = data[i]
@@ -69,11 +68,8 @@ class V9918:
     def render_line_sprites(self, surface, y):
         sprites_on_line = 0
         draw_log = [0] * self.SCREEN_WIDTH
-        for i, spr in enumerate(self.sprites):
-            if spr["y"] == 208: return
-            color_byte = spr["color"]
-            color_index = color_byte & 0x0F
-            if color_index == 0: continue
+        for i,spr in enumerate(self.sprites):
+            color_index = spr["color"]
             color = self.PALETTE[color_index]
             mag = 2 if self.sprite_mag else 1
             size = 16 * mag if self.sprite_size16 else 8 * mag
@@ -94,7 +90,6 @@ class V9918:
             else:
                 blocks = [spr["pattern"]]
             x = spr["x"]
-            if color_byte & 0x80: x -= 32
             for pat_no in blocks:
                 bits = self.sprite_patterns[pat_no][py]
                 for px in range(8):
@@ -103,8 +98,6 @@ class V9918:
                             if draw_log[x] == 0:
                                 draw_log[x] = color_index
                                 surface.set_at((x, y), color)
-                            else:
-                                self.sprite_collision = True
                         x += 1
 if __name__ == "__main__":
     vdp = V9918()
@@ -126,10 +119,6 @@ if __name__ == "__main__":
                     sys.exit()
             rom.run(frame)
             vdp.render_sprite1(screen)
-            if vdp.sprite_collision:
-                print("SPRITE COLLISION")
-            if vdp.sprite_5s:
-                print(f"SPRITE OVERFLOW: 5th sprite={vdp.sprite_5s_index}")
             scaled = pygame.transform.scale(
                 screen,
                 (vdp.SCREEN_WIDTH * SCALE, vdp.SCREEN_HEIGHT * SCALE)

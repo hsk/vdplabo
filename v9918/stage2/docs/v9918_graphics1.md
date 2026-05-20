@@ -30,4 +30,22 @@ pyのこのループを消します:
     for py in range(8):
 ```
 
-グラフィックスモードやテキストモードは基本的に簡単な書き換えで済みます。
+さらに最適化をして無駄な計算がないようにしました。
+
+```
+    def render_line_graphics1(self, surface, y):
+        x = 0
+        name = (y // 8) * self.COLS
+        py = y % 8
+        for _ in range(self.COLS):
+            char_no  = self.name_table[name]
+            name += 1
+            bits     = self.pattern_table[char_no][py]
+            color    = self.color_table[char_no]
+            fg_color = self.PALETTE[(color >> 4) & 0x0F]
+            bg_color = self.PALETTE[color & 0x0F]
+            for px in range(8):
+                c = fg_color if bits & (0x80 >> px) else bg_color
+                surface.set_at((x, y), c)
+                x += 1
+```

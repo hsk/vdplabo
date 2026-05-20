@@ -180,7 +180,7 @@ class V9918:
         self.sprites[no]["color"] = color
         self.sprites[no]["enable"] = True
     def render_sprite1(self, surface):
-        for spr in self.sprites:
+        for spr in reversed(self.sprites):
             if not spr["enable"]:
                 continue
             color = self.PALETTE[spr["color"]]
@@ -567,8 +567,8 @@ if __name__ == "__main__":
                 self.mode = (self.mode + 1) & 3
                 vdp.sprite_size16 = self.mode >= 2
                 vdp.sprite_mag = (self.mode % 2) == 1
-            base_size = 16 if vdp.sprite_size16 else 8
-            size = base_size * 2 if vdp.sprite_mag else base_size
+            size = 16 if vdp.sprite_size16 else 8
+            size = size * 2 if vdp.sprite_mag else size
             if frame % 180 == 0:
                 for i, s in enumerate(self.sps):
                     if s["x"] >= 256 - size: s["x"] = 256 - size - 1

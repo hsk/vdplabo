@@ -55,19 +55,13 @@ class V9918:
         cy = y // 8
         py = y % 8
         fg_color = self.PALETTE[self.text_fg]
+        x = 8
         for cx in range(self.COLS):
-            index = cy * self.COLS + cx
-            char_no = self.name_table[index]
-            pattern = self.pattern_table[char_no]
-            bits = pattern[py]
-            # Text1 uses only 6 pixels width
+            char_no = self.name_table[cy * self.COLS + cx]
+            bits = self.pattern_table[char_no][py]
             for px in range(6):
-                mask = 0x80 >> px
-                if bits & mask:
-                    x = cx * self.CHAR_W + px + 8
-                    y = cy * self.CHAR_H + py
-                    if 0 <= x < self.SCREEN_WIDTH and 0 <= y < self.SCREEN_HEIGHT:
-                        surface.set_at((x, y), fg_color)
+                if bits & (0x80 >> px): surface.set_at((x, y), fg_color)
+                x += 1
 if __name__ == "__main__":
     vdp = V9918()
     def machine(rom):
