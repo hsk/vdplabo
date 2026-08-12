@@ -1,0 +1,26 @@
+{
+    "data": {
+        "spj82_sq_head1": 108,
+        "spj83_sq_head2": 109,
+        "spj84_sq_head3": 110,
+        "spj85_sq_body1": 111,
+        "spj86_sq_body2": 112,
+        "spj87_sq_body3": 113,
+        "spj88_godani_head1": 114,
+        "spj89_godani_head2": 115,
+        "spj90_godani_head3": 116,
+        "spj91_hone_head1": 117,
+        "spj92_hone_head2": 118,
+        "spj93_hone_head3": 119,
+        "spj94_hone_body1": 120,
+        "spj95_hone_body2": 121,
+        "spj96_hone_body3": 122,
+        "spj97_uraia_body": 123,
+        "spj98_uraia_head": 124,
+        "spj99_uraia_tail": 125
+    },
+    "equ": {
+        "val7070h": "spj86_sq_body2 + 80 ;3070",
+        "val7530h": "spj97_uraia_body + 86 ;3530"
+    }
+}

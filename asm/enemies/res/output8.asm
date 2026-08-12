@@ -1,0 +1,35 @@
+; all 3 = 3 = 3x1
+; 1
+    db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+    db $16,$16,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+    db $FF,$16,$16,$57,$57,$FF,$FF,$FF,$FF,$FF,$FF
+    db $FF,$FF,$16,$16,$57,$57,$57,$57,$57,$57,$57
+    db $FF,$FF,$FF,$FF,$17,$17,$17,$00,$00,$17,$17
+    db $FF,$FF,$FF,$FF,$FF,$FF,$35,$35,$35,$35,$35
+    db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$16
+    db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+    db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+    db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+; 2
+    db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+    db $15,$15,$FF,$16,$16,$77,$77,$77,$FF,$15,$15
+    db $FF,$34,$16,$16,$16,$16,$77,$77,$77,$77,$FF
+    db $34,$34,$16,$16,$00,$00,$00,$77,$77,$77,$77
+    db $17,$17,$17,$17,$17,$17,$17,$17,$17,$17,$17
+    db $05,$05,$35,$35,$35,$35,$35,$35,$35,$05,$05
+    db $16,$14,$14,$16,$16,$16,$16,$16,$14,$14,$16
+    db $FF,$FF,$70,$70,$FF,$FF,$FF,$77,$77,$FF,$FF
+    db $FF,$FF,$FF,$70,$FF,$FF,$FF,$77,$FF,$FF,$FF
+    db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+; 3
+    db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+    db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$07,$77
+    db $FF,$FF,$FF,$FF,$FF,$FF,$07,$07,$77,$77,$FF
+    db $77,$77,$77,$77,$77,$77,$77,$77,$77,$FF,$FF
+    db $17,$17,$00,$00,$17,$17,$17,$FF,$FF,$FF,$FF
+    db $35,$35,$35,$35,$35,$FF,$FF,$FF,$FF,$FF,$FF
+    db $16,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+    db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+    db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+    db $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+; all 3

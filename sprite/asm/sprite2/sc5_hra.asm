@@ -1,0 +1,1 @@
+https://github.com/hra1129/V9968_Cartridge/blob/main/fpga/V9968_Cartridge_TangNano20K/src/v9968/test_pattern/sprite/sp1pri.asm

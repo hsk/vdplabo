@@ -1,0 +1,310 @@
+# スプライト研究サンプル
+
+## sc1 sp1 8x8の3つのスプライトを表示するプログラム
+
+```basic
+10 SCREEN 1,0:COLOR 15,1,1:CLS
+20 FOR I=0 TO 7:READ A$:VPOKE &H3800+I,VAL("&B"+A$):NEXT I
+30 PUT SPRITE 0,(30,100),15,0
+35 PUT SPRITE 1,(60,100),14,0
+36 PUT SPRITE 2,(90,100),11,0
+37 GOTO 37
+40 DATA 00011000
+50 DATA 00111100
+60 DATA 01111110
+70 DATA 11011011
+80 DATA 11111111
+90 DATA 00100100
+100 DATA 01011010
+110 DATA 10100101
+```
+
+## sc1 sp1 当たり判定チェック
+
+10 SCREEN 1,1:COLOR 15,1,1:CLS:SPRITE ON:ON SPRITE GOSUB 150
+20 FOR I=0 TO 7:READ A$:VPOKE &H3800+I,VAL("&B"+A$):NEXT I
+30 X=900:Y=1150:C=15
+40 REM --- 止まっているターゲット（1番、2番） ---
+50 PUT SPRITE 1,(100,100),14,0
+60 PUT SPRITE 2,(160,100),11,0
+70 REM --- メインループ（キー入力と移動） ---
+80 K=STICK(0):REM 0:無 3:右 7:左
+90 IF K=3 THEN X=X+1:C=15
+100 IF K=7 THEN X=X-1:C=15
+120 REM --- 自機（0番）の表示更新 ---
+130 PUT SPRITE 0,(X/10,Y/10),C,0
+140 GOTO 80
+150 C=8:RETURN
+200 DATA 00011000
+210 DATA 00111100
+220 DATA 01111110
+230 DATA 11011011
+240 DATA 11111111
+250 DATA 00100100
+260 DATA 01011010
+270 DATA 10100101
+
+## sc1 sp1 スプライト個数制限チェック4個
+
+```basic
+10 SCREEN 1,1:COLOR 15,1,1:CLS
+20 FOR I=0 TO 7:VPOKE &H3800+I,255:NEXT I
+25 K=-8
+30 FOR I=0 TO 9
+35   PUT SPRITE I,(40+I*16,100+I*K),2+I,0
+37 NEXT I
+48 K=K+1:IF K=8 THEN K=-8
+60 GOTO 30
+```
+
+## sc4 sp2 スプライト個数制限チェック8個
+
+```basic
+10 SCREEN 4,1:COLOR 15,1,1:CLS
+20 FOR I=0 TO 7:VPOKE &H3800+I,255:NEXT I
+25 K=-8
+30 FOR I=0 TO 9
+35   PUT SPRITE I,(40+I*16,100+I*K),2+I,0
+37 NEXT I
+48 K=K+1:IF K=8 THEN K=-8
+60 GOTO 30
+```
+
+## sc5 sp2 スプライト個数制限チェック8個
+
+```basic
+10 SCREEN 5,1:COLOR 15,1,1:CLS
+20 FOR I=0 TO 7:VPOKE &H3800+I,255:NEXT I
+25 K=-8
+30 FOR I=0 TO 9
+35   PUT SPRITE I,(40+I*16,100+I*K),2+I,0
+37 NEXT I
+48 K=K+1:IF K=8 THEN K=-8
+60 GOTO 30
+```
+
+## sc5 ラインごと色付け
+
+```basic
+10 SCREEN 5,1:COLOR 15,15,4:CLS
+25 K=-8
+30 FOR I=0 TO 9
+34   SPRITE$(I)=STRING$(8,255):REM 255を8個並べたパターンの文字列
+35   COLOR SPRITE$(I)=STRING$(2,2+I)+STRING$(4,3+I)++STRING$(2,2+I)
+36   PUT SPRITE I,(40+I*16,100+I*K)
+37 NEXT I
+48 K=K+1:IF K=8 THEN K=-8
+60 GOTO 30
+```
+
+## sc5 パレット指定
+
+
+```basic
+10 SCREEN 5,1:COLOR 1,1,1:CLS
+20 COLOR=( 1,3,3,3)
+30 COLOR=( 8,0,0,0):COLOR=( 9,0,0,7):COLOR=(10,0,7,0):COLOR=(11,0,7,7)
+40 COLOR=(12,7,0,0):COLOR=(13,7,0,7):COLOR=(14,7,7,0):COLOR=(15,7,7,7)
+50 FOR I=0 TO 7:SPRITE$(I)=STRING$(8,255):COLOR SPRITE$(I)=STRING$(8,I+8):NEXT I
+60 K=-8
+70 FOR I=0 TO 7
+80   PUT SPRITE I,(40+I*16,100+I*K)
+90 NEXT I
+100 K=K+1:IF K=8 THEN K=-8
+110 GOTO 70
+```
+
+## sc5 スプライト２枚重ね合わせ
+
+```basic
+10 SCREEN 5,1:COLOR 1,1,1:CLS
+20 COLOR=( 1,3,3,3)
+30 COLOR=( 8,0,0,0):COLOR=( 9,0,0,7):COLOR=(10,0,7,0):COLOR=(11,0,7,7)
+40 COLOR=(12,7,0,0):COLOR=(13,7,0,7):COLOR=(14,7,7,0):COLOR=(15,7,7,7)
+50 REM --- 0番（9番色・青）と 1番（10番色・緑）の形と色を定義 ---
+60 SPRITE$(0)=STRING$(8,255):COLOR SPRITE$(0)=STRING$(8,&H00+9)
+70 SPRITE$(1)=STRING$(8,255):COLOR SPRITE$(1)=STRING$(8,&H40+10)
+80 REM --- 4ドットだけズラして配置（重なった中央が11番色の水色になる） ---
+90 PUT SPRITE 0,(100,100)
+100 PUT SPRITE 1,(104,108)
+110 GOTO 110
+```
+
+何も表示されてないラインは描画されない所を気をつけないといけない。
+
+## sc5 スプライト３枚重ね合わせ
+
+```basic
+10 SCREEN 5,1:COLOR 1,1,1:CLS
+20 COLOR=( 1,3,3,3)
+30 COLOR=( 8,0,0,0):COLOR=( 9,0,0,7):COLOR=(10,0,7,0):COLOR=(11,0,7,7)
+40 COLOR=(12,7,0,0):COLOR=(13,7,0,7):COLOR=(14,7,7,0):COLOR=(15,7,7,7)
+50 SPRITE$(0)=STRING$(8,255):COLOR SPRITE$(0)=STRING$(8,&H00+8+1)
+60 SPRITE$(1)=STRING$(8,255):COLOR SPRITE$(1)=STRING$(8,&H40+8+2)
+70 SPRITE$(2)=STRING$(8,255):COLOR SPRITE$(2)=STRING$(8,&H40+8+4)
+80 PUT SPRITE 0,(100,100)
+90 PUT SPRITE 1,(108,106)
+100 PUT SPRITE 2,(108,100-6)
+110 GOTO 110
+```
+
+３枚重ねもできますが、何もないラインはやはり描画されない。
+
+## sc5 スプライト２枚重ね合わせの重ね合わせ
+
+```basic
+10 SCREEN 5,1:COLOR 0,0,0:CLS
+20 COLOR=( 0,3,3,3)
+30 COLOR=( 8,0,0,0):COLOR=( 9,0,0,7):COLOR=(10,0,7,0):COLOR=(11,0,7,7)
+40 COLOR=(12,7,0,0):COLOR=(13,7,0,7):COLOR=(14,7,7,0):COLOR=(15,7,7,7)
+50 SPRITE$(0)=STRING$(8,255):COLOR SPRITE$(0)=STRING$(8,&H00+8+1)
+60 SPRITE$(1)=STRING$(8,255):COLOR SPRITE$(1)=STRING$(8,&H40+8+2)
+70 SPRITE$(2)=STRING$(8,255):COLOR SPRITE$(2)=STRING$(8,&H00+8+4)
+80 PUT SPRITE 0,(100,100)
+90 PUT SPRITE 1,(108,106)
+100 PUT SPRITE 2,(108,100-6)
+110 GOTO 110
+```
+
+## スプライト３枚重ね合わせの重ね合わせ
+
+```basic
+```
+
+## スプライトがチラチラする
+
+vpokeを使うと速い
+
+```basic
+10 SCREEN 5,1:COLOR 0,0,0:CLS
+20 COLOR=( 0,3,3,3):COLOR=( 1,3,3,7):COLOR=( 2,3,7,3):COLOR=( 3,3,7,7)
+30 COLOR=( 4,7,3,3):COLOR=( 5,7,3,7):COLOR=( 6,7,7,3):COLOR=( 7,7,7,7)
+40 COLOR=( 8,0,0,0):COLOR=( 9,0,0,7):COLOR=(10,0,7,0):COLOR=(11,0,7,7)
+50 COLOR=(12,7,0,0):COLOR=(13,7,0,7):COLOR=(14,7,7,0):COLOR=(15,7,7,7)
+60 SPRITE$(0)=STRING$(8,255):COLOR SPRITE$(0)=STRING$(8,&H00+8+1)
+70 SPRITE$(1)=STRING$(8,255):COLOR SPRITE$(1)=STRING$(8,&H40+8+2)
+80 SPRITE$(2)=STRING$(8,255):COLOR SPRITE$(2)=STRING$(8,&H00+2)
+90 SPRITE$(3)=STRING$(8,255):COLOR SPRITE$(3)=STRING$(8,&H40+4)
+100 SPRITE$(4)=STRING$(8,255):COLOR SPRITE$(4)=STRING$(8,&H00+8+1)
+110 SPRITE$(5)=STRING$(8,255):COLOR SPRITE$(5)=STRING$(8,&H40+8+2)
+120 X=80:Y=80
+130 PUT SPRITE 0,(100,100)
+140 PUT SPRITE 1,(108,108)
+150 PUT SPRITE 4,(100,132)
+160 PUT SPRITE 5,(108,140)
+170 K=STICK(0)
+180 IF K=1 THEN Y=Y-1
+190 IF K=3 THEN X=X+1
+200 IF K=5 THEN Y=Y+1
+210 IF K=7 THEN X=X-1
+220 VPOKE &H7608,Y  :VPOKE &H7609,X  :VPOKE &H760A,2
+230 VPOKE &H760C,Y+8:VPOKE &H760D,X+8:VPOKE &H760E,3
+240 GOTO 170
+```
+
+## 何も描画されていないラインのORスプライトは表示しない
+
+```basic
+```
+
+## OR用のスプライトがある上に通常スプライトを描画してもORが取られる
+
+どんな時かというと、、、？
+
+```basic
+```
+
+## アセンブラでカセット作ってテストしたい
+
+アセンブラで動かしたけど横線が現れてしまう。
+スプライト属性テーブル位置を変えた方が良さそう。
+
+- [x] sc1 sp01 8x8のスプライトを表示
+- [x] sc1 sp02 8x8の3つのスプライトを表示
+- [x] sc1 sp03 動かす
+- [x] sc1 sp04 衝突判定
+
+013EH RDVDP
+
+#### Status register 0
+
+|      |   7 |   6 |   5 |   4 |   3 |   2 |   1 |   0 |                        |
+| ---- | --- | --- | --- | --- | --- | --- | --- | --- | ---------------------- |
+|  S#0 |   F | `5S`|  `C`|`5S4`|`5S3`|`5S2`|`5S1`|`5S0`|`Status register 0      |
+
+- F 垂直帰線割り込みフラグ
+    S#0を読み出すとリセットされる
+- 5S 第5スプライトフラグ
+    1水平線上にスプライトが5個(GRAPHIC3～GRAPHIC7モードは9個)並ぶとリセットされる
+- C 衝突フラグ
+    スプライトが衝突するとセットされる
+- 5th sprite# (5S4-5S0) 第5(第9)スプライトの番号がセットされる
+
+- [x] sc1 sp05 スプライト個数制限チェック4個
+
+```basic
+10 SCREEN 1,1:COLOR 15,1,1:CLS
+20 FOR I=0 TO 7:VPOKE &H3800+I,255:NEXT I
+25 K=-8
+30 FOR I=0 TO 9
+35   PUT SPRITE I,(40+I*16,100+I*K),2+I,0
+37 NEXT I
+48 K=K+1:IF K=8 THEN K=-8
+60 GOTO 30
+```
+
+- [ ] sc4 sp01 スプライト個数制限チェック8個
+- [x] sc5 sp01 スプライト個数制限チェック8個
+- [x] 1. sc5 sp02 ラインごと色付け
+
+```basic
+10 SCREEN 5,1:COLOR 15,15,4:CLS
+25 K=-8
+30 FOR I=0 TO 9
+34   SPRITE$(I)=STRING$(8,255):REM 255を8個並べたパターンの文字列
+35   COLOR SPRITE$(I)=STRING$(2,2+I)+STRING$(4,3+I)++STRING$(2,2+I):REM 二色、４色、二色で+2+3+2の色を設定してる。
+36   PUT SPRITE I,(40+I*16,100+I*K)
+37 NEXT I
+48 K=K+1:IF K=8 THEN K=-8
+60 GOTO 30
+```
+
+- [x] 2. sc5 sp03 パレット指定
+
+```basic
+10 SCREEN 5,1:COLOR 1,1,1:CLS
+20 COLOR=( 1,3,3,3)
+30 COLOR=( 8,0,0,0):COLOR=( 9,0,0,7):COLOR=(10,0,7,0):COLOR=(11,0,7,7)
+40 COLOR=(12,7,0,0):COLOR=(13,7,0,7):COLOR=(14,7,7,0):COLOR=(15,7,7,7)
+50 FOR I=0 TO 7:SPRITE$(I)=STRING$(8,255):COLOR SPRITE$(I)=STRING$(8,I+8):NEXT I
+60 K=-8
+70 FOR I=0 TO 7
+80   PUT SPRITE I,(40+I*16,100+I*K)
+90 NEXT I
+100 K=K+1:IF K=8 THEN K=-8
+110 GOTO 70
+```
+
+- [x] 3. sc5 sp04 スプライト2枚重ね合わせ
+
+```basic
+10 SCREEN 5,1:COLOR 1,1,1:CLS
+20 COLOR=( 1,3,3,3)
+30 COLOR=( 8,0,0,0):COLOR=( 9,0,0,7):COLOR=(10,0,7,0):COLOR=(11,0,7,7)
+40 COLOR=(12,7,0,0):COLOR=(13,7,0,7):COLOR=(14,7,7,0):COLOR=(15,7,7,7)
+50 REM --- 0番（9番色・青）と 1番（10番色・緑）の形と色を定義 ---
+60 SPRITE$(0)=STRING$(8,255):COLOR SPRITE$(0)=STRING$(8,&H00+9)
+70 SPRITE$(1)=STRING$(8,255):COLOR SPRITE$(1)=STRING$(8,&H40+10)
+80 REM --- 4ドットだけズラして配置（重なった中央が11番色の水色になる） ---
+90 PUT SPRITE 0,(100,100)
+100 PUT SPRITE 1,(104,108)
+110 GOTO 110
+```
+
+- [x] 4. sc5 sp05 スプライト3枚重ね合わせ
+- [ ] 5. sc5 sp06 スプライト2枚重ね合わの重ね合わせ
+
+
+- [ ] 重ね合わせについて考える
+- [ ] 重ね合わせについて実装し対応する
+- [ ] tinymsxなどで動かす

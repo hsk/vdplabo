@@ -1,0 +1,15 @@
+{
+    "data": {
+        "spj113_tree_kouri": 139,
+        "spj114_dom_muteki": 141,
+        "spj115_iwa3": 143,
+        "spj116_iwa4": 144,
+        "spj117_kikai_tree": 145,
+        "spj118_robo": 147,
+        "spj119_kikai_iwa": 148
+    },
+    "equ": {
+        "l7cb2h": "spj114_dom_muteki + 28 ;3cb2",
+        "l7f7fh": "spj118_robo + 85 ;3f7f"
+    }
+}

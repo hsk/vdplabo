@@ -1,0 +1,34 @@
+{
+    "data":{
+        "spj01_tree1":0,
+        "spj01_tree1_l4000h": 0,
+        "spj09_explosion_tree":2,
+        "spj10_bullet1":4,
+        "spj11_bullet2": 5,
+        "spj12_bullet3": 6,
+        "spj13_bullet4": 7,
+        "spj14_fire": 8,
+        "spj20_huyu":9,
+        "spj22_kusa":10,
+        "spj51_kusa2": 11,
+        "spj26_mukadens":12,
+        "spj36_explosion1":13,
+        "spj36_explosion2":14,
+        "spj38_tomos1": 15,
+        "spj39_tomos2": 16,
+        "spj40_tomos3": 17,
+        "spj59_boss_explosion1": 18,
+        "spj60_boss_explosion2": 19,
+        "spj62_sq_head0": 20,
+        "spj63_sq_body0": 21,
+        "spj82_sq_head1": 22,
+        "spj83_sq_head2": 23,
+        "spj84_sq_head3": 24,
+        "spj85_sq_body1": 25,
+        "spj86_sq_body2": 26,
+        "spj87_sq_body3": 27
+    },
+    "equ":{
+        "val7070h": "spj86_sq_body2 + 80 ;3070"
+    }
+}

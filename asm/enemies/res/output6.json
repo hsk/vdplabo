@@ -1,0 +1,17 @@
+{
+    "data": {
+        "spj52_tree9": 71,
+        "spj53_tree10": 73,
+        "spj54_tree11": 75,
+        "spj55_tree12": 77,
+        "spj56_bean_green": 79,
+        "spj57_bean_yellow": 80,
+        "spj58_huyu_iwa": 81,
+        "spj59_boss_explosion1": 82,
+        "spj60_boss_explosion2": 83
+    },
+    "equ": {
+        "sub_5f37h": "spj52_tree9 + 181 ;1f37",
+        "sub_6264h": "spj57_bean_yellow + 4 ;2264"
+    }
+}

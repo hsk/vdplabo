@@ -1,0 +1,20 @@
+{
+    "data": {
+        "spj41_dom_green_l": 50,
+        "spj42_dom_green_r": 52,
+        "spj43_dom_red_l": 54,
+        "spj44_dom_red_r": 56,
+        "spj45_dom_black_l": 58,
+        "spj46_dom_black_r": 60,
+        "spj47_dom_blue_l": 62,
+        "spj48_dom_blue_r": 64,
+        "spj49_dom_blue2": 66,
+        "spj50_dom_blue3": 68,
+        "spj51_kusa2": 70
+    },
+    "equ": {
+        "val5757h": "spj43_dom_red_l + 35 ;1757",
+        "val58c8h_on_spj_tbl": "spj44_dom_red_r + 184 ;18c8",
+        "val5d21h": "spj49_dom_blue2 + 197 ;1d21"
+    }
+}

@@ -1,0 +1,27 @@
+{
+    "data": {
+        "spj10_bullet1": 18,
+        "spj11_bullet2": 19,
+        "spj12_bullet3": 20,
+        "spj13_bullet4": 21,
+        "spj14_fire": 22,
+        "spj15_missile_green": 23,
+        "spj16_misile_read": 24,
+        "spj17_missile_black": 25,
+        "spj18_missile_blue": 26,
+        "spj19_missile_yellow": 27,
+        "spj20_huyu": 28,
+        "spj21_ice": 29,
+        "spj22_kusa": 30,
+        "spj23_iwa": 31,
+        "spj24_kinoko": 32,
+        "spj25_skeg": 33,
+        "spj26_mukadens": 34,
+        "spj27_kanari": 35,
+        "spj28_par": 36,
+        "spj29_jet1": 37
+    },
+    "equ": {
+        "val5000h": "spj29_jet1 + 26 ;1000"
+    }
+}
