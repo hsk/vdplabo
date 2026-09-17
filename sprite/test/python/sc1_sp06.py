@@ -1,9 +1,6 @@
 """sc1_sp06.asm と同じ落下アニメーションをエンジンで再現し、
 録画したmp4(golden)とピクセル単位で比較するテスト。
 
-goldenは実寸(256x192)ではなくニアレストネイバーで4倍(1024x768)に
-拡大して保存する。比較用データと目視確認用ファイルを兼用するため。
-
 参照:
 - ソース: ../asm/sc1_sp06.asm
 - 解説:   ../docs/sc1_sp06.md
@@ -21,15 +18,9 @@ if str(_ENGINE_SPRITE1) not in sys.path:
     sys.path.insert(0, str(_ENGINE_SPRITE1))
 
 from stage1 import V9918  # noqa: E402
-from video_golden import save_mp4, load_mp4, surface_to_rgb, upscale_nearest  # noqa: E402
+from video_golden import save_mp4, load_mp4, surface_to_rgb  # noqa: E402
 
 GOLDEN_PATH = pathlib.Path(__file__).resolve().parent / "goldens" / "sc1_sp06.mp4"
-
-# goldenは見やすさのため実寸(256x192)ではなくニアレストネイバーで
-# 4倍に拡大して保存する(ドット絵なので拡大しても劣化しない)
-VIEW_SCALE = 4
-GOLDEN_WIDTH = V9918.SCREEN_WIDTH * VIEW_SCALE
-GOLDEN_HEIGHT = V9918.SCREEN_HEIGHT * VIEW_SCALE
 
 # sc1_sp06.asm の sprite_pattern_data と同じ (T, Y, P, E)
 SPRITE_PATTERNS = [
@@ -97,14 +88,6 @@ def render_frames(count: int = FRAME_COUNT):
     return frames
 
 
-def render_frames_scaled(count: int = FRAME_COUNT):
-    """golden保存/比較用: 実寸フレームをVIEW_SCALE倍にしたもの。"""
-    return [
-        upscale_nearest(f, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
-        for f in render_frames(count)
-    ]
-
-
 def test_all_sprites_settle_at_target_y():
     state = SpriteState()
     for c in range(1, FRAME_COUNT):
@@ -123,8 +106,8 @@ def test_matches_golden_video():
             f"golden not found: {GOLDEN_PATH} "
             "(run `python sc1_sp06.py --update-golden` once to create it)"
         )
-    actual = render_frames_scaled()
-    expected = load_mp4(GOLDEN_PATH, GOLDEN_WIDTH, GOLDEN_HEIGHT)
+    actual = render_frames()
+    expected = load_mp4(GOLDEN_PATH, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT)
     assert len(actual) == len(expected), (
         f"frame count mismatch: actual={len(actual)} expected={len(expected)}"
     )
@@ -146,10 +129,10 @@ def _run_all_tests():
 
 
 def update_golden():
-    frames = render_frames_scaled()
+    frames = render_frames()
     GOLDEN_PATH.parent.mkdir(parents=True, exist_ok=True)
-    save_mp4(frames, GOLDEN_WIDTH, GOLDEN_HEIGHT, GOLDEN_PATH)
-    print(f"wrote {GOLDEN_PATH} ({GOLDEN_WIDTH}x{GOLDEN_HEIGHT}, {len(frames)} frames)")
+    save_mp4(frames, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, GOLDEN_PATH)
+    print(f"wrote {GOLDEN_PATH} ({len(frames)} frames)")
 
 
 def show_window():
