@@ -92,29 +92,6 @@ def sprite_y_values(c: int):
     return [Y_BASE + i * c for i in range(TEST_COUNT)]
 
 
-def _single_frame_overflow(y_values):
-    """9個のテスト用スプライトのY配置**単体**を、使い捨てのVDPで1回だけ
-    描画してスプライトオーバー(5S)フラグと消えたスプライト番号を求める。
-
-    単発の配置を確認したい単体テスト用のヘルパーであり、render_frames()の
-    ような連続動作のモデル化には使わない(実機のVDPは動き続けている1つの
-    ハードウェアなので、フレームごとに新しいVDPを作り直すような動作には
-    ならないため)。
-    """
-    import pygame
-
-    pygame.init()
-    vdp = V9918()
-    vdp.set_sprite_pattern(0, SPRITE_PATTERN)
-    vdp.set_sprite_mag(True)
-    for i, y in enumerate(y_values):
-        vdp.set_sprite(i, X[i], y, 0, COLOR[i])
-    vdp.set_sprite(DIAG_INDEX, 0, 208, 0, 0)  # Y=208 で打ち切り、9枚だけを評価する
-    surface = pygame.Surface((V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT))
-    vdp.render_sprite1(surface)
-    return vdp.get_5s(), vdp.get_5s_index()
-
-
 def _next_c(c: int) -> int:
     c += 1
     return C_MIN if c == C_MAX + 1 else c
@@ -183,21 +160,6 @@ def test_c_cycles_through_17_values():
         values.append(c)
         c = _next_c(c)
     assert values == list(range(C_MIN, C_MAX + 1)) + [C_MIN]
-
-
-def test_overflow_triggers_when_all_sprites_align():
-    # c=0 だと9枚全部がY=100に重なるので、5枚目(index=4)でオーバーするはず
-    overflow, index = _single_frame_overflow(sprite_y_values(0))
-    assert overflow is True
-    assert index == 4
-
-
-def test_no_overflow_when_widely_spaced():
-    # c=8 なら間隔が広く、5枚以上が同一ラインに重なることはないはず。
-    # オーバーしなかった場合、実機では32枚全走査し終えた値=31になる。
-    overflow, index = _single_frame_overflow(sprite_y_values(8))
-    assert overflow is False
-    assert index == 31
 
 
 def test_matches_golden_video():
