@@ -33,6 +33,16 @@ make clean  # rom/*.rom を削除
 python capture_openmsx.py rom/sc1_sp01.rom --settle 0.2 --duration 1
 ```
 
+webmまで一括で作りたい場合は出力先の拡張子を`.webm`にすると、
+録画→クロップ→ニアレストネイバー4倍拡大→保存までまとめて行う。
+Makefileからは`make capture ROM=<ターゲット名>`で1コマンドで実行できる
+(先に`make <ターゲット名>`でromを作っておくこと)。
+
+```sh
+make sc1_sp05             # rom/sc1_sp05.rom を作る
+make capture ROM=sc1_sp05 # ../expected/sc1_sp05_openmsx.webm を作る
+```
+
 - 録画には`record`コマンドを使う。openMSXの`record`はZMBV(Zip Motion Blocks
   Video)というロスレスコーデックでAVIに保存する。ffmpegがZMBVのデコーダを
   内蔵しているのでそのまま読める

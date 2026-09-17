@@ -16,5 +16,12 @@ sc5_%:
 show-path:
 	openmsx -command "puts \"=== 録画データの保存先 ===\"; puts [file join $$env(OPENMSX_USER_DATA) \"captures\"]; quit"
 
+# openMSXで実際にROMを実行し、録画結果を ../expected/<ROM>_openmsx.webm に保存する。
+# 例: make capture ROM=sc1_sp05 (先に make sc1_sp05 でrom/sc1_sp05.romを作っておくこと)
+# ターゲット名を rom名の接頭辞(sc1_/sc5_)に合わせるとsc1_%/sc5_%パターンと
+# 衝突してビルドの方が実行されてしまうため、変数指定方式にしている。
+capture:
+	python3 capture_openmsx.py rom/$(ROM).rom -o ../expected/$(ROM)_openmsx.webm
+
 clean:
 	rm -rf rom/*.rom

@@ -110,14 +110,43 @@ def avi_to_cropped_rgb_frames(avi_path: pathlib.Path):
     return [raw[i:i + frame_size] for i in range(0, len(raw), frame_size)]
 
 
+def capture_to_webm(rom: pathlib.Path, out_webm: pathlib.Path, settle: float = 0.2, duration: float = 2.0,
+                     scale: int = 4) -> int:
+    """録画(avi)→クロップ→ニアレストネイバー拡大→webm保存までを一括で行う。
+
+    中間のaviは一時ファイルとして扱い、最後に破棄する。戻り値はフレーム数。
+    """
+    import sys
+
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "python"))
+    from video_golden import save_video, upscale_nearest  # noqa: E402
+
+    with tempfile.TemporaryDirectory() as tmp:
+        avi_path = pathlib.Path(tmp) / "capture.avi"
+        run_capture(rom, avi_path, settle, duration)
+        frames = avi_to_cropped_rgb_frames(avi_path)
+
+    scaled = [upscale_nearest(f, 256, 192, scale) for f in frames]
+    out_webm.parent.mkdir(parents=True, exist_ok=True)
+    save_video(scaled, 256 * scale, 192 * scale, out_webm)
+    return len(frames)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("rom", type=pathlib.Path)
-    parser.add_argument("-o", "--output", type=pathlib.Path, default=None, help="出力先avi (省略時は<rom>.avi)")
+    parser.add_argument("-o", "--output", type=pathlib.Path, default=None,
+                         help="出力先。拡張子が.webmならクロップ+4倍拡大まで済ませたwebmを直接書き出す"
+                              "(省略時は<rom>.avi、生のaviのまま保存)")
     parser.add_argument("--settle", type=float, default=0.2, help="initブレークポイント到達後、録画開始までの待ち秒数")
-    parser.add_argument("--duration", type=float, default=1.0, help="録画する秒数")
+    parser.add_argument("--duration", type=float, default=2.0, help="録画する秒数")
+    parser.add_argument("--scale", type=int, default=4, help="webm出力時のニアレストネイバー拡大倍率")
     args = parser.parse_args()
 
     output = args.output or args.rom.with_suffix(".avi")
-    run_capture(args.rom, output, args.settle, args.duration)
-    print(f"wrote {output}")
+    if output.suffix == ".webm":
+        n = capture_to_webm(args.rom, output, args.settle, args.duration, args.scale)
+        print(f"wrote {output} ({n} frames)")
+    else:
+        run_capture(args.rom, output, args.settle, args.duration)
+        print(f"wrote {output}")
