@@ -17,25 +17,16 @@ VP9の`gbrp`(RGBのまま符号化)を使っているのでビット完全一致
     python sc1_sp06.py --show          # pygameウィンドウで目視確認(等倍速ループ)
     python sc1_sp06.py --update-expected # ../expected/sc1_sp06.webm を再生成
 """
-import pathlib
 import sys
 
-_ENGINE_SPRITE1 = pathlib.Path(__file__).resolve().parents[2] / "engine" / "python" / "sprite1"
-if str(_ENGINE_SPRITE1) not in sys.path:
-    sys.path.insert(0, str(_ENGINE_SPRITE1))
+from test_support import add_engine_path, expected_path_for, render_expected_frames, compare_to_expected, write_expected, main  # noqa: E402
+
+add_engine_path(__file__)
 
 from stage1 import V9918  # noqa: E402
-from video_expected import save_video, load_video, surface_to_rgb, upscale_nearest, downscale_nearest  # noqa: E402
 
-# test/expected/ はpython実装専用ではなく、将来asm(openMSX)のテストなど
-# 別の実装からも同じ正解データとして参照できる共有の置き場所
-EXPECTED_PATH = pathlib.Path(__file__).resolve().parents[1] / "expected" / "sc1_sp06.webm"
-
-# expectedは見やすさのため実寸(256x192)ではなくニアレストネイバーで
-# 4倍に拡大して保存する(ドット絵なので拡大しても劣化しない)
+EXPECTED_PATH = expected_path_for(__file__, "sc1_sp06.webm")
 VIEW_SCALE = 4
-EXPECTED_WIDTH = V9918.SCREEN_WIDTH * VIEW_SCALE
-EXPECTED_HEIGHT = V9918.SCREEN_HEIGHT * VIEW_SCALE
 
 # sc1_sp06.asm の sprite_pattern_data と同じ (T, Y, P, E)
 SPRITE_PATTERNS = [
@@ -81,34 +72,28 @@ class SpriteState:
             self.y[i] = candidate
 
 
-def render_frames(count: int = FRAME_COUNT):
-    import pygame
+class Simulation:
+    """1回目のstep()は「sprite_init直後、まだ動く前」の初期状態を描画し、
+    2回目以降はsprites_moveと同じロジックでYを1フレーム進めてから描画する。
+    (実機のframe_counterはstep()の呼び出し回数-1に対応する)
+    """
 
-    pygame.init()
-    vdp = build_vdp()
-    state = SpriteState()
-    surface = pygame.Surface((V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT))
-    frames = []
+    def __init__(self):
+        import pygame
 
-    def draw():
+        pygame.init()
+        self.vdp = build_vdp()
+        self.state = SpriteState()
+        self.surface = pygame.Surface((V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT))
+        self._counter = 0
+
+    def step(self):
+        if self._counter > 0:
+            self.state.advance(self._counter)
         for i in range(4):
-            vdp.set_sprite(i, START_X[i], state.y[i], i, COLOR)
-        vdp.render_sprite1(surface)
-        frames.append(surface_to_rgb(surface))
-
-    draw()  # frame 0: sprite_init直後、まだ動く前の初期状態
-    for c in range(1, count):
-        state.advance(c)
-        draw()
-    return frames
-
-
-def render_frames_scaled(count: int = FRAME_COUNT):
-    """expected保存用: 実寸フレームをVIEW_SCALE倍にしたもの。"""
-    return [
-        upscale_nearest(f, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
-        for f in render_frames(count)
-    ]
+            self.vdp.set_sprite(i, START_X[i], self.state.y[i], i, COLOR)
+        self.vdp.render_sprite1(self.surface)
+        self._counter += 1
 
 
 def test_all_sprites_settle_at_target_y():
@@ -124,57 +109,20 @@ def test_sprites_start_offscreen():
 
 
 def test_matches_expected_video():
-    if not EXPECTED_PATH.exists():
-        raise AssertionError(
-            f"expected not found: {EXPECTED_PATH} "
-            "(run `python sc1_sp06.py --update-expected` once to create it)"
-        )
-    actual = render_frames()  # 実寸(256x192)のまま比較する
-    expected_video_frames = load_video(EXPECTED_PATH, EXPECTED_WIDTH, EXPECTED_HEIGHT)
-    expected = [
-        downscale_nearest(f, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
-        for f in expected_video_frames
-    ]
-    assert len(actual) == len(expected), (
-        f"frame count mismatch: actual={len(actual)} expected={len(expected)}"
-    )
-    for i, (a, e) in enumerate(zip(actual, expected)):
-        assert a == e, f"frame {i} differs from expected"
-
-
-def _run_all_tests():
-    ok = True
-    for name, fn in sorted(globals().items()):
-        if name.startswith("test_") and callable(fn):
-            try:
-                fn()
-                print(f"OK   {name}")
-            except AssertionError as e:
-                ok = False
-                print(f"FAIL {name}: {e}")
-    return ok
-
-
-def update_expected():
-    frames = render_frames_scaled()
-    EXPECTED_PATH.parent.mkdir(parents=True, exist_ok=True)
-    save_video(frames, EXPECTED_WIDTH, EXPECTED_HEIGHT, EXPECTED_PATH)
-    print(f"wrote {EXPECTED_PATH} ({EXPECTED_WIDTH}x{EXPECTED_HEIGHT}, {len(frames)} frames)")
+    actual = render_expected_frames(Simulation, count=FRAME_COUNT)
+    compare_to_expected(actual, EXPECTED_PATH, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE, __file__)
 
 
 def show_window():
     """目視確認用: pygameウィンドウでアニメーションを等倍速でループ再生する。"""
     import pygame
 
-    pygame.init()
-    vdp = build_vdp()
-    state = SpriteState()
+    sim = Simulation()
     scale = 3
     window = pygame.display.set_mode(
         (V9918.SCREEN_WIDTH * scale, V9918.SCREEN_HEIGHT * scale)
     )
     pygame.display.set_caption("sc1_sp06")
-    screen = pygame.Surface((V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT))
     clock = pygame.time.Clock()
     cycle_len = 300  # 255フレーム + 1秒待ち相当のループ間隔
     frame = 0
@@ -183,16 +131,11 @@ def show_window():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-        cycle_frame = frame % cycle_len
-        if cycle_frame == 0:
-            state = SpriteState()
-        else:
-            state.advance(cycle_frame)
-        for i in range(4):
-            vdp.set_sprite(i, START_X[i], state.y[i], i, COLOR)
-        vdp.render_sprite1(screen)
+        if frame % cycle_len == 0:
+            sim = Simulation()
+        sim.step()
         scaled = pygame.transform.scale(
-            screen, (V9918.SCREEN_WIDTH * scale, V9918.SCREEN_HEIGHT * scale)
+            sim.surface, (V9918.SCREEN_WIDTH * scale, V9918.SCREEN_HEIGHT * scale)
         )
         window.blit(scaled, (0, 0))
         pygame.display.flip()
@@ -200,10 +143,10 @@ def show_window():
         frame += 1
 
 
+def update_expected():
+    frames = render_expected_frames(Simulation, count=FRAME_COUNT)
+    write_expected(frames, EXPECTED_PATH, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
+
+
 if __name__ == "__main__":
-    if "--show" in sys.argv:
-        show_window()
-    elif "--update-expected" in sys.argv:
-        update_expected()
-    else:
-        sys.exit(0 if _run_all_tests() else 1)
+    main(globals(), show_window, update_expected)

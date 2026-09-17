@@ -23,7 +23,7 @@ main_loop は無限ループでc=-8..8(17状態)を繰り返すだけなので�
 (cold boot直後の最初の1回を除く)では「1つ前の状態」は必ず周期内の
 1つ前の値になる。これは近似ではなく、ループが回り続けている限り厳密に
 成り立つ関係なので、どの位相(どのcの値)から録画を始めても正しく
-フレーム列を再構成できる(render_frames の start_c 引数)。
+フレーム列を再構成できる(Simulation の start_c 引数)。
 
 PALETTEと背景色(R#7)はopenMSXで実測した値を使っており、
 ../expected/sc1_sp05_openmsx.webm (実機キャプチャ)と位相さえ合わせれば
@@ -38,21 +38,16 @@ PALETTEと背景色(R#7)はopenMSXで実測した値を使っており、
     python sc1_sp05.py --show          # pygameウィンドウで目視確認(ループ再生)
     python sc1_sp05.py --update-expected # ../expected/sc1_sp05.webm を再生成
 """
-import pathlib
 import sys
 
-_ENGINE_SPRITE1 = pathlib.Path(__file__).resolve().parents[2] / "engine" / "python" / "sprite1"
-if str(_ENGINE_SPRITE1) not in sys.path:
-    sys.path.insert(0, str(_ENGINE_SPRITE1))
+from test_support import add_engine_path, expected_path_for, render_expected_frames, compare_to_expected, write_expected, main  # noqa: E402
+
+add_engine_path(__file__)
 
 from stage4 import V9918  # noqa: E402
-from video_expected import save_video, load_video, surface_to_rgb, upscale_nearest, downscale_nearest  # noqa: E402
 
-EXPECTED_PATH = pathlib.Path(__file__).resolve().parents[1] / "expected" / "sc1_sp05.webm"
-
+EXPECTED_PATH = expected_path_for(__file__, "sc1_sp05.webm")
 VIEW_SCALE = 4
-EXPECTED_WIDTH = V9918.SCREEN_WIDTH * VIEW_SCALE
-EXPECTED_HEIGHT = V9918.SCREEN_HEIGHT * VIEW_SCALE
 
 # sc1_sp05.asm の sprite_init と同じパラメータ
 TEST_COUNT = 9
@@ -74,7 +69,6 @@ SPRITE_PATTERN = [0b11111111] * 8
 
 WAIT_FRAMES = 5  # wait_5frame と同じ: 1つの配置が画面に留まるVSYNC数
 STATE_COUNT = PERIOD  # ちょうど1周期分の状態数(c=-8..8)
-FRAME_COUNT = STATE_COUNT * WAIT_FRAMES
 
 
 def build_vdp() -> V9918:
@@ -104,11 +98,6 @@ def _prev_c(c: int) -> int:
 
 class Simulation:
     """1つの永続的なvdpでc=start_cから順に状態を進めるコア処理。
-
-    render_frames() (expectedの生成/比較) と show_window() (目視確認) は
-    どちらもこのクラスを共有する。ロジックを2箇所に重複させると片方だけ
-    直し忘れる/ズレるということが起きるため、状態遷移はここ1箇所に
-    まとめている。ヘッドレスのテストからも同じ`step()`を呼べる。
 
     main_loop は無限ループでc=-8..8を繰り返すだけなので、周期内であれば
     どのcから始めても「1つ前の状態」は必ず (c-1) (wrap込み) になる
@@ -152,26 +141,6 @@ class Simulation:
         return overflow, index
 
 
-def render_frames(state_count: int = STATE_COUNT, start_c: int = C_MIN):
-    """各状態を wait_5frame と同じく WAIT_FRAMES 回複製して、
-    実機の表示時間(1状態=5 VSYNC)に合わせたフレーム列を返す。
-    """
-    sim = Simulation(start_c)
-    frames = []
-    for _ in range(state_count):
-        sim.step()
-        frame = surface_to_rgb(sim.surface)
-        frames.extend([frame] * WAIT_FRAMES)
-    return frames
-
-
-def render_frames_scaled(state_count: int = STATE_COUNT, start_c: int = C_MIN):
-    return [
-        upscale_nearest(f, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
-        for f in render_frames(state_count, start_c)
-    ]
-
-
 def test_c_cycles_through_17_values():
     # VDP/Simulationは一切使わない純粋なロジックテスト。_next_c()が
     # C_MIN(-8)からC_MAX(8)まで17値を順に進み、その次でまたC_MINに
@@ -184,79 +153,14 @@ def test_c_cycles_through_17_values():
     assert values == list(range(C_MIN, C_MAX + 1)) + [C_MIN]
 
 
-_shared_trace = None  # テスト全体でSimulationを1つだけ作って使い回すためのキャッシュ
-
-
-def _get_shared_trace():
-    """C_MINから順番に1周期分描画していき、各cについて
-    「そのcを描画した直後の表示フレーム」を記録する。
-    Simulationのインスタンスはこの1回のwalkでしか作らない。
-    """
-    global _shared_trace
-    if _shared_trace is None:
-        sim = Simulation(start_c=C_MIN)
-        trace = {}
-        for _ in range(STATE_COUNT):
-            c_used = sim.c  # このstep()でちょうど描画されるcの値
-            sim.step()
-            trace[c_used] = surface_to_rgb(sim.surface)
-        _shared_trace = trace
-    return _shared_trace
-
-
 def test_matches_expected_video():
     # 1周期分(17状態 x WAIT_FRAMES)を実際にSimulationで描画し、
     # 保存済みのexpected動画(../expected/sc1_sp05.webm)とフレームごとに
     # ピクセル単位で完全一致するか比較する。スプライトの位置・色・
     # 背景色・スプライトオーバー時の診断表示(赤/白と番号)まで、
     # 見た目に関わる部分をまとめて検証する本命のテスト。
-    if not EXPECTED_PATH.exists():
-        raise AssertionError(
-            f"expected not found: {EXPECTED_PATH} "
-            "(run `python sc1_sp05.py --update-expected` once to create it)"
-        )
-    trace = _get_shared_trace()
-    actual = []
-    c = C_MIN
-    for _ in range(STATE_COUNT):
-        actual.extend([trace[c]] * WAIT_FRAMES)
-        c = _next_c(c)
-
-    expected_video_frames = load_video(EXPECTED_PATH, EXPECTED_WIDTH, EXPECTED_HEIGHT)
-    expected = [
-        downscale_nearest(f, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
-        for f in expected_video_frames
-    ]
-    assert len(actual) == len(expected), (
-        f"frame count mismatch: actual={len(actual)} expected={len(expected)}"
-    )
-    for i, (a, e) in enumerate(zip(actual, expected)):
-        assert a == e, f"frame {i} differs from expected"
-
-
-def _run_all_tests():
-    # test_ で始まる関数だけを拾って実行する。update_expected() はこの
-    # 命名規則に従っていないため、ここには含まれない(意図的)。
-    ok = True
-    for name, fn in sorted(globals().items()):
-        if name.startswith("test_") and callable(fn):
-            try:
-                fn()
-                print(f"OK   {name}")
-            except AssertionError as e:
-                ok = False
-                print(f"FAIL {name}: {e}")
-    return ok
-
-
-def update_expected():
-    # これはテストではなく、expected(正解データ)を書き換える専用の処理。
-    # test_ で始まらないので _run_all_tests では実行されず、
-    # コマンドラインで --update-expected を指定した時だけ呼ばれる。
-    frames = render_frames_scaled()
-    EXPECTED_PATH.parent.mkdir(parents=True, exist_ok=True)
-    save_video(frames, EXPECTED_WIDTH, EXPECTED_HEIGHT, EXPECTED_PATH)
-    print(f"wrote {EXPECTED_PATH} ({EXPECTED_WIDTH}x{EXPECTED_HEIGHT}, {len(frames)} frames)")
+    actual = render_expected_frames(Simulation, count=STATE_COUNT, wait_frames=WAIT_FRAMES, start_c=C_MIN)
+    compare_to_expected(actual, EXPECTED_PATH, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE, __file__)
 
 
 def show_window():
@@ -293,10 +197,10 @@ def show_window():
         frame += 1
 
 
+def update_expected():
+    frames = render_expected_frames(Simulation, count=STATE_COUNT, wait_frames=WAIT_FRAMES, start_c=C_MIN)
+    write_expected(frames, EXPECTED_PATH, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
+
+
 if __name__ == "__main__":
-    if "--show" in sys.argv:
-        show_window()
-    elif "--update-expected" in sys.argv:
-        update_expected()
-    else:
-        sys.exit(0 if _run_all_tests() else 1)
+    main(globals(), show_window, update_expected)

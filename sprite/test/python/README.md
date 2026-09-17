@@ -23,6 +23,22 @@ python sc1_sp01.py --show   # pygameウィンドウで目視確認
 pytestは使わず、`test_`で始まる関数をファイル自身が実行する簡易ランナーにしています
 (依存を増やさないため)。ただし関数名の規約は合わせてあるので、将来pytestを導入した場合もそのまま拾えます。
 
+## test_support.py / Simulationクラス
+
+各テストファイル(`sc1_sp01.py`など)は、`step()`を呼ぶたびに`self.surface`が
+更新される`Simulation`クラスを定義します。静止画(1回だけstep)・
+アニメーション(複数回step)のどちらでも同じインターフェースです。
+
+[test_support.py](test_support.py) はこの`Simulation`クラスを**渡すだけ**で
+共通処理(sys.pathの設定、expectedとの比較、expectedへの保存、
+`--show`/`--update-expected`のCLIディスパッチ)を行える土台です。
+各テストファイルが個別に持っていた重複コードをここにまとめています。
+
+```python
+actual = render_expected_frames(Simulation, count=17, wait_frames=5, start_c=-8)
+compare_to_expected(actual, EXPECTED_PATH, WIDTH, HEIGHT, VIEW_SCALE, __file__)
+```
+
 ## expected動画による検証
 
 静止画1枚(`sc1_sp01`など)・アニメーション(`sc1_sp06`など)を問わず、

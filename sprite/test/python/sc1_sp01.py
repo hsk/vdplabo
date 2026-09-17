@@ -18,22 +18,16 @@ PALETTEと背景色(R#7)はopenMSXで実測した値を使っており、
     python sc1_sp01.py --show          # pygameウィンドウで目視確認
     python sc1_sp01.py --update-expected # ../expected/sc1_sp01.webm を再生成
 """
-import pathlib
 import sys
 
-_ENGINE_SPRITE1 = pathlib.Path(__file__).resolve().parents[2] / "engine" / "python" / "sprite1"
-if str(_ENGINE_SPRITE1) not in sys.path:
-    sys.path.insert(0, str(_ENGINE_SPRITE1))
+from test_support import add_engine_path, expected_path_for, render_expected_frames, compare_to_expected, write_expected, main  # noqa: E402
+
+add_engine_path(__file__)
 
 from stage4 import V9918  # noqa: E402
-from video_expected import save_video, load_video, surface_to_rgb, upscale_nearest, downscale_nearest  # noqa: E402
 
-# test/expected/ はpython実装専用ではなく、将来asm(openMSX)のテストなど
-# 別の実装からも同じ正解データとして参照できる共有の置き場所
-EXPECTED_PATH = pathlib.Path(__file__).resolve().parents[1] / "expected" / "sc1_sp01.webm"
+EXPECTED_PATH = expected_path_for(__file__, "sc1_sp01.webm")
 VIEW_SCALE = 4
-EXPECTED_WIDTH = V9918.SCREEN_WIDTH * VIEW_SCALE
-EXPECTED_HEIGHT = V9918.SCREEN_HEIGHT * VIEW_SCALE
 
 # sc1_sp01.asm の sprite_pattern_data と同じ8バイト
 SPRITE_PATTERN = [
@@ -77,12 +71,21 @@ def build_vdp() -> V9918:
     return vdp
 
 
-def render(vdp: V9918):
-    import pygame
-    pygame.init()
-    surface = pygame.Surface((V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT))
-    vdp.render_sprite1(surface)
-    return surface
+class Simulation:
+    """静止画なので状態遷移は無いが、他のテストファイルと同じ
+    step()インターフェースに合わせてある(test_support.render_expected_frames
+    がSimulationクラスだけ渡せば動くようにするため)。
+    """
+
+    def __init__(self):
+        import pygame
+
+        pygame.init()
+        self.vdp = build_vdp()
+        self.surface = pygame.Surface((V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT))
+
+    def step(self):
+        self.vdp.render_sprite1(self.surface)
 
 
 def test_magnify_is_applied():
@@ -95,29 +98,33 @@ BACKGROUND_COLOR = V9918.PALETTE[4]
 
 
 def test_background_is_blue():
-    surface = render(build_vdp())
-    assert surface.get_at((0, 0))[:3] == BACKGROUND_COLOR
+    sim = Simulation()
+    sim.step()
+    assert sim.surface.get_at((0, 0))[:3] == BACKGROUND_COLOR
 
 
 def test_sprite_top_left_corner_is_background():
     # 拡大時、画面上のオフセット(0,0)はパターン(row0,col0)に対応する。
     # 1行目のパターン 00111100 の左端(col0)はビットが立っていない
-    surface = render(build_vdp())
-    assert surface.get_at((SPRITE_X, DISPLAY_Y))[:3] == BACKGROUND_COLOR
+    sim = Simulation()
+    sim.step()
+    assert sim.surface.get_at((SPRITE_X, DISPLAY_Y))[:3] == BACKGROUND_COLOR
 
 
 def test_sprite_center_is_white():
     # 拡大時、画面上のオフセット(4,4)はパターン(row2,col2)に対応する。
     # 3行目のパターン 11111111 は全ビット立っている
-    surface = render(build_vdp())
-    assert surface.get_at((SPRITE_X + 4, DISPLAY_Y + 4))[:3] == (255, 255, 255)
+    sim = Simulation()
+    sim.step()
+    assert sim.surface.get_at((SPRITE_X + 4, DISPLAY_Y + 4))[:3] == (255, 255, 255)
 
 
 def test_sprite_top_edge_is_white():
     # 拡大時、画面上のオフセット(4,0)はパターン(row0,col2)に対応する。
     # 1行目のパターン 00111100 の3ビット目(0-indexed col=2)はビットが立っている
-    surface = render(build_vdp())
-    assert surface.get_at((SPRITE_X + 4, DISPLAY_Y))[:3] == (255, 255, 255)
+    sim = Simulation()
+    sim.step()
+    assert sim.surface.get_at((SPRITE_X + 4, DISPLAY_Y))[:3] == (255, 255, 255)
 
 
 def test_magnified_footprint_extends_beyond_8x8():
@@ -125,57 +132,35 @@ def test_magnified_footprint_extends_beyond_8x8():
     # 非拡大の8x8スプライトなら絶対に届かない範囲で、
     # パターン(row6,col6)=01111110のcol6ビットが立っているため白になるはず。
     # これが白ければ拡大が実際に効いている証拠になる。
-    surface = render(build_vdp())
-    assert surface.get_at((SPRITE_X + 12, DISPLAY_Y + 12))[:3] == (255, 255, 255)
+    sim = Simulation()
+    sim.step()
+    assert sim.surface.get_at((SPRITE_X + 12, DISPLAY_Y + 12))[:3] == (255, 255, 255)
 
 
 def test_matches_expected_video():
-    if not EXPECTED_PATH.exists():
-        raise AssertionError(
-            f"expected not found: {EXPECTED_PATH} "
-            "(run `python sc1_sp01.py --update-expected` once to create it)"
-        )
-    actual = surface_to_rgb(render(build_vdp()))  # 実寸(256x192)のまま比較する
-    expected_video_frames = load_video(EXPECTED_PATH, EXPECTED_WIDTH, EXPECTED_HEIGHT)
-    assert len(expected_video_frames) == 1, f"expected should have exactly 1 frame, got {len(expected_video_frames)}"
-    expected = downscale_nearest(expected_video_frames[0], V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
-    assert actual == expected, "frame differs from expected"
-
-
-def _run_all_tests():
-    ok = True
-    for name, fn in sorted(globals().items()):
-        if name.startswith("test_") and callable(fn):
-            try:
-                fn()
-                print(f"OK   {name}")
-            except AssertionError as e:
-                ok = False
-                print(f"FAIL {name}: {e}")
-    return ok
+    actual = render_expected_frames(Simulation, count=1)
+    compare_to_expected(actual, EXPECTED_PATH, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE, __file__)
 
 
 def show_window():
     """目視確認用: pygameウィンドウにスプライトを表示する。"""
     import pygame
 
-    pygame.init()
-    vdp = build_vdp()
+    sim = Simulation()
+    sim.step()
     scale = 3
     window = pygame.display.set_mode(
         (V9918.SCREEN_WIDTH * scale, V9918.SCREEN_HEIGHT * scale)
     )
     pygame.display.set_caption("sc1_sp01")
-    screen = pygame.Surface((V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT))
     clock = pygame.time.Clock()
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-        vdp.render_sprite1(screen)
         scaled = pygame.transform.scale(
-            screen, (V9918.SCREEN_WIDTH * scale, V9918.SCREEN_HEIGHT * scale)
+            sim.surface, (V9918.SCREEN_WIDTH * scale, V9918.SCREEN_HEIGHT * scale)
         )
         window.blit(scaled, (0, 0))
         pygame.display.flip()
@@ -183,17 +168,9 @@ def show_window():
 
 
 def update_expected():
-    frame = surface_to_rgb(render(build_vdp()))
-    scaled = upscale_nearest(frame, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
-    EXPECTED_PATH.parent.mkdir(parents=True, exist_ok=True)
-    save_video([scaled], EXPECTED_WIDTH, EXPECTED_HEIGHT, EXPECTED_PATH)
-    print(f"wrote {EXPECTED_PATH} ({EXPECTED_WIDTH}x{EXPECTED_HEIGHT}, 1 frame)")
+    frames = render_expected_frames(Simulation, count=1)
+    write_expected(frames, EXPECTED_PATH, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
 
 
 if __name__ == "__main__":
-    if "--show" in sys.argv:
-        show_window()
-    elif "--update-expected" in sys.argv:
-        update_expected()
-    else:
-        sys.exit(0 if _run_all_tests() else 1)
+    main(globals(), show_window, update_expected)
