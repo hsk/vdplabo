@@ -72,16 +72,25 @@ def test_magnify_is_applied():
     assert vdp.sprite_mag is True
 
 
-def test_background_is_black():
+# stage1エンジン(render_sprite1)は背景色(VDPレジスタ7, backdrop color)を
+# モデル化しておらず、常に黒で塗りつぶす簡易実装になっている。
+# 実機では sc1_sp01.asm がレジスタ7を書き換えていないため、
+# BIOSのデフォルト値(BAKCLR=4, 青)がそのまま背景色として残るはずで、
+# 実際に黒くはならない。背景色の実機再現はstage4(レジスタ駆動)で
+# 対応する計画のため、ここではstage1の現在の挙動として黒であることだけを確認する。
+BACKGROUND_COLOR_STAGE1 = (0, 0, 0)  # stage1の簡易実装での固定背景色(実機の色ではない)
+
+
+def test_background_is_stage1_default_black():
     surface = render(build_vdp())
-    assert surface.get_at((0, 0))[:3] == (0, 0, 0)
+    assert surface.get_at((0, 0))[:3] == BACKGROUND_COLOR_STAGE1
 
 
 def test_sprite_top_left_corner_is_background():
     # 拡大時、画面上のオフセット(0,0)はパターン(row0,col0)に対応する。
     # 1行目のパターン 00111100 の左端(col0)はビットが立っていない
     surface = render(build_vdp())
-    assert surface.get_at((SPRITE_X, SPRITE_Y))[:3] == (0, 0, 0)
+    assert surface.get_at((SPRITE_X, SPRITE_Y))[:3] == BACKGROUND_COLOR_STAGE1
 
 
 def test_sprite_center_is_white():

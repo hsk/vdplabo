@@ -13,6 +13,13 @@
 - [x] collision flag
 - [x] 5S flag
 
+### 未実装の機能
+
+- [ ] R#7 (Text color/Back drop color register)
+  背景色は現状 render_sprite1 で黒固定になっている。実機ではSCREEN 1切り替え後、
+  プログラムがR#7を書き換えなければBIOSのデフォルト値(BAKCLR=4, 青)が
+  背景色として残るため、レジスタ駆動になるこの段階で対応する予定。
+
 ### 既知の問題
 
 - スプライトアトリビュートテーブルのアドレス計算が、本来読むべきR#5ではなく
