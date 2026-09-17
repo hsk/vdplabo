@@ -173,6 +173,9 @@ def render_frames_scaled(state_count: int = STATE_COUNT, start_c: int = C_MIN):
 
 
 def test_c_cycles_through_17_values():
+    # VDP/Simulationは一切使わない純粋なロジックテスト。_next_c()が
+    # C_MIN(-8)からC_MAX(8)まで17値を順に進み、その次でまたC_MINに
+    # 折り返すことだけを確認する。
     values = []
     c = C_MIN
     for _ in range(PERIOD + 1):
