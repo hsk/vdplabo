@@ -15,7 +15,7 @@ VP9の`gbrp`(RGBのまま符号化)を使っているのでビット完全一致
 実行方法:
     python sc1_sp06.py                 # 自動テストのみ実行
     python sc1_sp06.py --show          # pygameウィンドウで目視確認(等倍速ループ)
-    python sc1_sp06.py --update-golden # goldens/sc1_sp06.webm を再生成
+    python sc1_sp06.py --update-golden # ../expected/sc1_sp06.webm を再生成
 """
 import pathlib
 import sys
@@ -27,7 +27,9 @@ if str(_ENGINE_SPRITE1) not in sys.path:
 from stage1 import V9918  # noqa: E402
 from video_golden import save_video, load_video, surface_to_rgb, upscale_nearest, downscale_nearest  # noqa: E402
 
-GOLDEN_PATH = pathlib.Path(__file__).resolve().parent / "goldens" / "sc1_sp06.webm"
+# test/expected/ はpython実装専用ではなく、将来asm(openMSX)のテストなど
+# 別の実装からも同じ正解データとして参照できる共有の置き場所
+GOLDEN_PATH = pathlib.Path(__file__).resolve().parents[1] / "expected" / "sc1_sp06.webm"
 
 # goldenは見やすさのため実寸(256x192)ではなくニアレストネイバーで
 # 4倍に拡大して保存する(ドット絵なので拡大しても劣化しない)

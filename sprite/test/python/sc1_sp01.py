@@ -12,7 +12,7 @@ engine/python/sprite1/stage4.py (レジスタ駆動・スキャンライン描�
 実行方法:
     python sc1_sp01.py                 # 自動テストのみ実行
     python sc1_sp01.py --show          # pygameウィンドウで目視確認
-    python sc1_sp01.py --update-golden # goldens/sc1_sp01.webm を再生成
+    python sc1_sp01.py --update-golden # ../expected/sc1_sp01.webm を再生成
 """
 import pathlib
 import sys
@@ -24,7 +24,9 @@ if str(_ENGINE_SPRITE1) not in sys.path:
 from stage4 import V9918  # noqa: E402
 from video_golden import save_video, load_video, surface_to_rgb, upscale_nearest, downscale_nearest  # noqa: E402
 
-GOLDEN_PATH = pathlib.Path(__file__).resolve().parent / "goldens" / "sc1_sp01.webm"
+# test/expected/ はpython実装専用ではなく、将来asm(openMSX)のテストなど
+# 別の実装からも同じ正解データとして参照できる共有の置き場所
+GOLDEN_PATH = pathlib.Path(__file__).resolve().parents[1] / "expected" / "sc1_sp01.webm"
 VIEW_SCALE = 4
 GOLDEN_WIDTH = V9918.SCREEN_WIDTH * VIEW_SCALE
 GOLDEN_HEIGHT = V9918.SCREEN_HEIGHT * VIEW_SCALE

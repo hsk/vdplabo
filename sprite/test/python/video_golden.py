@@ -111,7 +111,7 @@ if __name__ == "__main__":
             "見やすい別ファイルとして書き出す(入力ファイル自体は変更しない)"
         )
     )
-    parser.add_argument("input", type=Path, help="変換元のwebm (例: goldens/sc1_sp06.webm)")
+    parser.add_argument("input", type=Path, help="変換元のwebm (例: ../expected/sc1_sp06.webm)")
     parser.add_argument("-o", "--output", type=Path, default=None, help="出力先 (省略時は <input>_view.webm)")
     parser.add_argument("--scale", type=int, default=4, help="拡大倍率 (デフォルト4倍)")
     parser.add_argument("--open", action="store_true", help="生成後にデフォルトプレイヤーで開く")

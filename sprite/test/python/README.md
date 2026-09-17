@@ -27,8 +27,10 @@ pytestは使わず、`test_`で始まる関数をファイル自身が実行す�
 
 静止画1枚(`sc1_sp01`など)・アニメーション(`sc1_sp06`など)を問わず、
 [video_golden.py](video_golden.py) を使って録画したロスレスwebm
-([goldens/](goldens)以下, 例: `goldens/sc1_sp01.webm`)と実行結果を
-フレームごとにピクセル単位で比較します(静止画は1フレームのwebmとして扱います)。
+([../expected/](../expected)以下, 例: `../expected/sc1_sp01.webm`)と
+実行結果をフレームごとにピクセル単位で比較します(静止画は1フレームの
+webmとして扱います)。`expected/`はpython実装専用ではなく、将来
+openMSXなど別の実装からも同じ正解データとして参照する想定の共有置き場です。
 これとは別に、期待される座標のピクセル色を直接アサートするテストも用意しています
 (goldenファイルを作る前の設計確認や、特定ピクセルだけの素早いチェックに便利なため)。
 
@@ -46,7 +48,7 @@ pytestは使わず、`test_`で始まる関数をファイル自身が実行す�
 - goldenの新規作成/更新は `python sc1_sp01.py --update-golden` のように
   各テストファイルを`--update-golden`付きで実行します
 - さらに拡大した別ファイルが欲しい場合(SNS投稿用など)は
-  `python video_golden.py goldens/sc1_sp06.webm --scale 5 --open` のように
+  `python video_golden.py ../expected/sc1_sp06.webm --scale 5 --open` のように
   goldenを入力にして`video_golden.py`単体でも拡大できます(`*_view.webm`はgitignore対象)
 - このwebm golden方式は、将来openMSXや自作エミュレータが出力するフレーム列にも
   同じ`video_golden.py`をそのまま使い回すことを想定しています
