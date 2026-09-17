@@ -205,6 +205,11 @@ def _get_shared_trace():
 
 
 def test_matches_golden_video():
+    # 1周期分(17状態 x WAIT_FRAMES)を実際にSimulationで描画し、
+    # 保存済みのgolden動画(../expected/sc1_sp05.webm)とフレームごとに
+    # ピクセル単位で完全一致するか比較する。スプライトの位置・色・
+    # 背景色・スプライトオーバー時の診断表示(赤/白と番号)まで、
+    # 見た目に関わる部分をまとめて検証する本命のテスト。
     if not GOLDEN_PATH.exists():
         raise AssertionError(
             f"golden not found: {GOLDEN_PATH} "
