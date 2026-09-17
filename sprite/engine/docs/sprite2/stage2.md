@@ -1,13 +1,13 @@
 # sprite2/stage2 について
 
-Phase 2: 1ライン描画(scanline)。未着手。
+Phase 2: 1ライン描画(scanline)。実装済み。
 
-- [ ] scanline sprite描画
-- [ ] 1ライン8枚制限
-- [ ] 9th sprite
-- [ ] sprite priority
-- [ ] collision
-- [ ] Y判定
+- [x] scanline sprite描画
+- [x] 1ライン8枚制限
+- [x] 9th sprite
+- [x] sprite priority
+- [x] collision
+- [x] Y判定
 
 ## sprite1/stage2との違い
 

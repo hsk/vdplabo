@@ -39,7 +39,7 @@ color 0 transparent・collision・9th sprite・scanline化はこの段階では�
 
 ## 2. Phase 2: 1ライン描画(scanline)
 
-MSX2/V9938らしい構造へ移行。未着手。
+MSX2/V9938らしい構造へ移行。実装済み。
 
 ### 2.1. 特徴
 
@@ -50,12 +50,12 @@ MSX2/V9938らしい構造へ移行。未着手。
 
 ### 2.2. 実装する機能
 
-- [ ] scanline sprite描画
-- [ ] 1ライン8枚制限
-- [ ] 9th sprite
-- [ ] sprite priority
-- [ ] collision
-- [ ] Y判定
+- [x] scanline sprite描画
+- [x] 1ライン8枚制限
+- [x] 9th sprite
+- [x] sprite priority
+- [x] collision
+- [x] Y判定
 
 ### 2.3. 目的
 
@@ -65,7 +65,7 @@ MSX2/V9938らしい構造へ移行。未着手。
 
 ## 3. Phase 3: VRAM使用
 
-VDP構造へ移行。未着手。
+VDP構造へ移行。実装済み。
 
 ### 3.1. 特徴
 
@@ -75,12 +75,12 @@ VDP構造へ移行。未着手。
 
 ### 3.2. 実装する機能
 
-- [ ] Sprite Attribute Table
-- [ ] Sprite Generator Table
-- [ ] Sprite Color Table (行ごとの色+CCビット)
-- [ ] pattern address計算
-- [ ] Y=208終端
-- [ ] 16x16 pattern連結
+- [x] Sprite Attribute Table
+- [x] Sprite Generator Table
+- [x] Sprite Color Table (行ごとの色+CCビット)
+- [x] pattern address計算
+- [x] Y=208終端
+- [x] 16x16 pattern連結
 
 ### 3.3. 目的
 
@@ -90,7 +90,7 @@ VDP構造へ移行。未着手。
 
 ## 4. Phase 4: レジスタ駆動
 
-完全なVDP化。未着手。テーブルアドレス計算・ステータスレジスタの詳細は
+完全なVDP化。実装済み。テーブルアドレス計算・ステータスレジスタの詳細は
 [stage4.md](stage4.md) を参照。
 
 ### 4.1. 特徴
@@ -101,12 +101,12 @@ VDP構造へ移行。未着手。
 
 ### 4.2. 実装する機能
 
-- [ ] sprite size register
-- [ ] magnify register
-- [ ] table base register (R#5, R#6, R#11)
-- [ ] status register (5S, collision, 5th sprite#)
-- [ ] EC bit
-- [ ] SPD(スプライト非表示)ビット
+- [x] sprite size register
+- [x] magnify register
+- [x] table base register (R#5, R#6, R#11)
+- [x] status register (5S, collision, 5th sprite#)
+- [x] EC bit
+- [x] SPD(スプライト非表示)ビット
 
 ### 4.3. 目的
 

@@ -1,13 +1,13 @@
 # sprite2/stage3 について
 
-Phase 3: VRAM使用。未着手。
+Phase 3: VRAM使用。実装済み。
 
-- [ ] Sprite Attribute Table
-- [ ] Sprite Generator Table
-- [ ] Sprite Color Table (行ごとの色+CCビット)
-- [ ] pattern address計算
-- [ ] Y=208終端
-- [ ] 16x16 pattern連結
+- [x] Sprite Attribute Table
+- [x] Sprite Generator Table
+- [x] Sprite Color Table (行ごとの色+CCビット)
+- [x] pattern address計算
+- [x] Y=208終端
+- [x] 16x16 pattern連結
 
 ## sprite1/stage3との違い
 

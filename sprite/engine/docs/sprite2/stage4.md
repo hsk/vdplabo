@@ -1,13 +1,13 @@
 # sprite2/stage4 について
 
-Phase 4: レジスタ駆動。未着手。
+Phase 4: レジスタ駆動。実装済み。
 
-- [ ] sprite size register
-- [ ] magnify register
-- [ ] table base register (R#5, R#6, R#11)
-- [ ] status register (5S, collision, 5th sprite#)
-- [ ] EC bit
-- [ ] SPD(スプライト非表示)ビット
+- [x] sprite size register
+- [x] magnify register
+- [x] table base register (R#5, R#6, R#11)
+- [x] status register (5S, collision, 5th sprite#)
+- [x] EC bit
+- [x] SPD(スプライト非表示)ビット
 
 ## sprite1/stage4との違い
 
