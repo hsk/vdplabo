@@ -1,6 +1,6 @@
 # SCREEN 1 でスプライトを1つ表示する
 
-このサンプル [sc1_sp01.asm](../sprite1/sc1_sp01.asm) は MSX の SCREEN 1 モードでスプライトを1つ表示する最小構成のカセットROMです。
+このサンプル [sc1_sp01.asm](../asm/sc1_sp01.asm) は MSX の SCREEN 1 モードでスプライトを1つ表示する最小構成のカセットROMです。
 
 ## ビルド方法
 
@@ -85,7 +85,7 @@ make sc1_sp03
 
 ## sc1_sp01.asm について
 
-ソースコード: [sc1_sp01.asm](../sprite1/sc1_sp01.asm)
+ソースコード: [sc1_sp01.asm](../asm/sc1_sp01.asm)
 
 表示されるスプライトは次のような8×8ドットの円形パターンです。
 

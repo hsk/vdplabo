@@ -56,27 +56,27 @@
 CBIOSさえあればディスクやBASICのROMがなくても動くので便利
 インクルードやライブラリの使用もなくワンソースで動くと密結合になるけど便利かな
 
-- [x] [sc1_sp01.asm](../sprite1/sc1_sp01.asm) 8x8のスプライトを表示 ([解説](sc1_sp01.md))
-- [x] [sc1_sp02.asm](../sprite1/sc1_sp02.asm) 8x8の3つのスプライトを表示 ([解説](sc1_sp02.md))
-- [x] [sc1_sp03.asm](../sprite1/sc1_sp03.asm) 動かす ([解説](sc1_sp03.md))
-- [x] [sc1_sp04.asm](../sprite1/sc1_sp04.asm) 衝突判定 ([解説](sc1_sp04.md))
+- [x] [sc1_sp01.asm](../asm/sc1_sp01.asm) 8x8のスプライトを表示 ([解説](sc1_sp01.md))
+- [x] [sc1_sp02.asm](../asm/sc1_sp02.asm) 8x8の3つのスプライトを表示 ([解説](sc1_sp02.md))
+- [x] [sc1_sp03.asm](../asm/sc1_sp03.asm) 動かす ([解説](sc1_sp03.md))
+- [x] [sc1_sp04.asm](../asm/sc1_sp04.asm) 衝突判定 ([解説](sc1_sp04.md))
   - 参考 [ステータスレジスタ0](#status-register-0)
 - 5th sprite# (5S4-5S0) 第5(第9)スプライトの番号がセットされる
-- [x] [sc1_sp05.asm](../sprite1/sc1_sp05.asm) スプライト個数制限チェック4個 ([解説](sc1_sp05.md))
+- [x] [sc1_sp05.asm](../asm/sc1_sp05.asm) スプライト個数制限チェック4個 ([解説](sc1_sp05.md))
   - 参考 [basic/sc1_sp03.bas](../basic/sc1_sp03.bas)
-- [x] [sc1_sp06.asm](../sprite2/sc1_sp06.asm) 一定速度落下アニメーション ([解説](sc1_sp06.md))
-- [x] [sc1_sp07.asm](../sprite2/sc1_sp07.asm) 減速付きの落下アニメーション ([解説](sc1_sp07.md))
-- [x] [sc1_sp08.asm](../sprite2/sc1_sp08.asm) 大量のスプライトを飛び回らせる ([解説](sc1_sp08.md))
-- [x] [sc5_sp01.asm](../sprite2/sc5_sp01.asm) スプライト個数制限チェック8個 ([解説](sc5_sp01.md))
-- [x] [sc5_sp02.asm](../sprite2/sc5_sp02.asm) ラインごと色付け ([解説](sc5_sp02.md))
+- [x] [sc1_sp06.asm](../asm/sc1_sp06.asm) 一定速度落下アニメーション ([解説](sc1_sp06.md))
+- [x] [sc1_sp07.asm](../asm/sc1_sp07.asm) 減速付きの落下アニメーション ([解説](sc1_sp07.md))
+- [x] [sc1_sp08.asm](../asm/sc1_sp08.asm) 大量のスプライトを飛び回らせる ([解説](sc1_sp08.md))
+- [x] [sc5_sp01.asm](../asm/sc5_sp01.asm) スプライト個数制限チェック8個 ([解説](sc5_sp01.md))
+- [x] [sc5_sp02.asm](../asm/sc5_sp02.asm) ラインごと色付け ([解説](sc5_sp02.md))
   - 参考 [basic/sc5_sp02.bas](../basic/sc5_sp02.bas)
-- [x] [sc5_sp03.asm](../sprite2/sc5_sp03.asm) パレット指定 ([解説](sc5_sp03.md))
+- [x] [sc5_sp03.asm](../asm/sc5_sp03.asm) パレット指定 ([解説](sc5_sp03.md))
   - 参考 [basic/sc5_sp03.bas](../basic/sc5_sp03.bas)
-- [x] [sc5_sp03_2.asm](../sprite2/sc5_sp03_2.asm) パレット指定(OTIR高速転送版) ([解説](sc5_sp03_2.md))
+- [x] [sc5_sp03_2.asm](../asm/sc5_sp03_2.asm) パレット指定(OTIR高速転送版) ([解説](sc5_sp03_2.md))
   - 参考 [basic/sc5_sp03_2.bas](../basic/sc5_sp03_2.bas)
-- [x] [sc5_sp04.asm](../sprite2/sc5_sp04.asm) スプライト2枚重ね合わせ ([解説](sc5_sp04.md))
+- [x] [sc5_sp04.asm](../asm/sc5_sp04.asm) スプライト2枚重ね合わせ ([解説](sc5_sp04.md))
   - 参考 [basic/sc5_sp04.bas](../basic/sc5_sp04.bas)
-- [x] [sc5_sp05.asm](../sprite2/sc5_sp05.asm) スプライトオーバー情報の可視化 ([解説](sc5_sp05.md))
+- [x] [sc5_sp05.asm](../asm/sc5_sp05.asm) スプライトオーバー情報の可視化 ([解説](sc5_sp05.md))
 
 ## 参考
 
