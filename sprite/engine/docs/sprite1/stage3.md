@@ -1,4 +1,4 @@
-## 3. v9918_sprite1.py について
+## 3. sprite1/stage3 について
 
 ステージ3ではVRAMを用いて実装します。
 
@@ -38,4 +38,3 @@
 - [ ] VRAM直接参照描画
 - [ ] 半横幅描画(MSX2_DISPLAY_HALF_HORIZONTAL)
 - [ ] 実機寄り TMS9918/MSX1 互換動作
-
