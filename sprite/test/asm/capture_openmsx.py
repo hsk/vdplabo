@@ -119,7 +119,7 @@ def capture_to_webm(rom: pathlib.Path, out_webm: pathlib.Path, settle: float = 0
     import sys
 
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "python"))
-    from video_golden import save_video, upscale_nearest  # noqa: E402
+    from video_expected import save_video, upscale_nearest  # noqa: E402
 
     with tempfile.TemporaryDirectory() as tmp:
         avi_path = pathlib.Path(tmp) / "capture.avi"

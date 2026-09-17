@@ -23,35 +23,35 @@ python sc1_sp01.py --show   # pygameウィンドウで目視確認
 pytestは使わず、`test_`で始まる関数をファイル自身が実行する簡易ランナーにしています
 (依存を増やさないため)。ただし関数名の規約は合わせてあるので、将来pytestを導入した場合もそのまま拾えます。
 
-## golden動画による検証
+## expected動画による検証
 
 静止画1枚(`sc1_sp01`など)・アニメーション(`sc1_sp06`など)を問わず、
-[video_golden.py](video_golden.py) を使って録画したロスレスwebm
+[video_expected.py](video_expected.py) を使って録画したロスレスwebm
 ([../expected/](../expected)以下, 例: `../expected/sc1_sp01.webm`)と
 実行結果をフレームごとにピクセル単位で比較します(静止画は1フレームの
 webmとして扱います)。`expected/`はpython実装専用ではなく、将来
 openMSXなど別の実装からも同じ正解データとして参照する想定の共有置き場です。
 これとは別に、期待される座標のピクセル色を直接アサートするテストも用意しています
-(goldenファイルを作る前の設計確認や、特定ピクセルだけの素早いチェックに便利なため)。
+(expectedファイルを作る前の設計確認や、特定ピクセルだけの素早いチェックに便利なため)。
 
 - webmは`libvpx-vp9`の`gbrp`(RGBのままVP9符号化、色空間変換なし)でエンコードしているため
   ビット完全一致で比較でき、輪郭のにじみ(クロマブリーディング)も出ません。
   通常のyuv420p/yuv444pは`-lossless 1`でもRGB→YUV変換の丸め誤差でにじみが出て
   ビット完全一致しないため使っていません(H.264の`libx264rgb`も試したが、
   ブラウザでの再生互換性がVP9の`gbrp`=Profile 1より劣るためVP9を採用)
-- goldenは実寸(256x192)ではなく、ニアレストネイバーで**4倍**(1024x768)に
+- expectedは実寸(256x192)ではなく、ニアレストネイバーで**4倍**(1024x768)に
   拡大して保存します。ドット絵なので拡大しても劣化せずビット完全一致比較でき、
   かつそのまま見やすいファイルとしても使えるので、比較用と目視確認用を兼用しています
   (比較時はテスト側も同じ倍率でフレームを拡大してから突き合わせます)
 - QuickTime Playerはwebm自体に非対応です(VLC/IINA/ffplayなら再生可)。
   目視確認は`--show`のpygameウィンドウでも可能です
-- goldenの新規作成/更新は `python sc1_sp01.py --update-expected` のように
+- expectedの新規作成/更新は `python sc1_sp01.py --update-expected` のように
   各テストファイルを`--update-expected`付きで実行します
 - さらに拡大した別ファイルが欲しい場合(SNS投稿用など)は
-  `python video_golden.py ../expected/sc1_sp06.webm --scale 5 --open` のように
-  goldenを入力にして`video_golden.py`単体でも拡大できます(`*_view.webm`はgitignore対象)
-- このwebm golden方式は、将来openMSXや自作エミュレータが出力するフレーム列にも
-  同じ`video_golden.py`をそのまま使い回すことを想定しています
+  `python video_expected.py ../expected/sc1_sp06.webm --scale 5 --open` のように
+  expectedを入力にして`video_expected.py`単体でも拡大できます(`*_view.webm`はgitignore対象)
+- このwebm expected方式は、将来openMSXや自作エミュレータが出力するフレーム列にも
+  同じ`video_expected.py`をそのまま使い回すことを想定しています
 
 `ffmpeg`がPATH上にある必要があります(`brew install ffmpeg`)。
 

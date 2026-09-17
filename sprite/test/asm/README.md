@@ -27,7 +27,7 @@ make clean  # rom/*.rom を削除
 ## openMSXでの自動録画 (capture_openmsx.py)
 
 実機(openMSX)で実際に動かした結果を録画し、[../python/](../python) の
-エンジンで再現した [../expected/](../expected) のgoldenと見比べるためのツール。
+エンジンで再現した [../expected/](../expected) の期待値と見比べるためのツール。
 
 ```sh
 python capture_openmsx.py rom/sc1_sp01.rom --settle 0.2 --duration 1

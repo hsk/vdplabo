@@ -1,6 +1,6 @@
 """sc1_sp05.asm と同じ「9個のスプライトのY座標を-8〜8で増減させ、
 1ラインの表示制限(5個以上)に達すると10個目の診断用スプライトが
-赤くなる」デモをエンジンで再現し、golden動画と比較するテスト。
+赤くなる」デモをエンジンで再現し、expected動画と比較するテスト。
 
 engine/python/sprite1/stage4.py (レジスタ駆動・スキャンライン描画)を使う。
 5th sprite(スプライトオーバー)判定は実機のVDPと同じくstage4エンジン
@@ -46,13 +46,13 @@ if str(_ENGINE_SPRITE1) not in sys.path:
     sys.path.insert(0, str(_ENGINE_SPRITE1))
 
 from stage4 import V9918  # noqa: E402
-from video_golden import save_video, load_video, surface_to_rgb, upscale_nearest, downscale_nearest  # noqa: E402
+from video_expected import save_video, load_video, surface_to_rgb, upscale_nearest, downscale_nearest  # noqa: E402
 
-GOLDEN_PATH = pathlib.Path(__file__).resolve().parents[1] / "expected" / "sc1_sp05.webm"
+EXPECTED_PATH = pathlib.Path(__file__).resolve().parents[1] / "expected" / "sc1_sp05.webm"
 
 VIEW_SCALE = 4
-GOLDEN_WIDTH = V9918.SCREEN_WIDTH * VIEW_SCALE
-GOLDEN_HEIGHT = V9918.SCREEN_HEIGHT * VIEW_SCALE
+EXPECTED_WIDTH = V9918.SCREEN_WIDTH * VIEW_SCALE
+EXPECTED_HEIGHT = V9918.SCREEN_HEIGHT * VIEW_SCALE
 
 # sc1_sp05.asm の sprite_init と同じパラメータ
 TEST_COUNT = 9
@@ -105,7 +105,7 @@ def _prev_c(c: int) -> int:
 class Simulation:
     """1つの永続的なvdpでc=start_cから順に状態を進めるコア処理。
 
-    render_frames() (goldenの生成/比較) と show_window() (目視確認) は
+    render_frames() (expectedの生成/比較) と show_window() (目視確認) は
     どちらもこのクラスを共有する。ロジックを2箇所に重複させると片方だけ
     直し忘れる/ズレるということが起きるため、状態遷移はここ1箇所に
     まとめている。ヘッドレスのテストからも同じ`step()`を呼べる。
@@ -204,15 +204,15 @@ def _get_shared_trace():
     return _shared_trace
 
 
-def test_matches_golden_video():
+def test_matches_expected_video():
     # 1周期分(17状態 x WAIT_FRAMES)を実際にSimulationで描画し、
-    # 保存済みのgolden動画(../expected/sc1_sp05.webm)とフレームごとに
+    # 保存済みのexpected動画(../expected/sc1_sp05.webm)とフレームごとに
     # ピクセル単位で完全一致するか比較する。スプライトの位置・色・
     # 背景色・スプライトオーバー時の診断表示(赤/白と番号)まで、
     # 見た目に関わる部分をまとめて検証する本命のテスト。
-    if not GOLDEN_PATH.exists():
+    if not EXPECTED_PATH.exists():
         raise AssertionError(
-            f"golden not found: {GOLDEN_PATH} "
+            f"expected not found: {EXPECTED_PATH} "
             "(run `python sc1_sp05.py --update-expected` once to create it)"
         )
     trace = _get_shared_trace()
@@ -222,16 +222,16 @@ def test_matches_golden_video():
         actual.extend([trace[c]] * WAIT_FRAMES)
         c = _next_c(c)
 
-    golden_frames = load_video(GOLDEN_PATH, GOLDEN_WIDTH, GOLDEN_HEIGHT)
+    expected_video_frames = load_video(EXPECTED_PATH, EXPECTED_WIDTH, EXPECTED_HEIGHT)
     expected = [
         downscale_nearest(f, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
-        for f in golden_frames
+        for f in expected_video_frames
     ]
     assert len(actual) == len(expected), (
         f"frame count mismatch: actual={len(actual)} expected={len(expected)}"
     )
     for i, (a, e) in enumerate(zip(actual, expected)):
-        assert a == e, f"frame {i} differs from golden"
+        assert a == e, f"frame {i} differs from expected"
 
 
 def _run_all_tests():
@@ -250,13 +250,13 @@ def _run_all_tests():
 
 
 def update_expected():
-    # これはテストではなく、golden(正解データ)を書き換える専用の処理。
+    # これはテストではなく、expected(正解データ)を書き換える専用の処理。
     # test_ で始まらないので _run_all_tests では実行されず、
     # コマンドラインで --update-expected を指定した時だけ呼ばれる。
     frames = render_frames_scaled()
-    GOLDEN_PATH.parent.mkdir(parents=True, exist_ok=True)
-    save_video(frames, GOLDEN_WIDTH, GOLDEN_HEIGHT, GOLDEN_PATH)
-    print(f"wrote {GOLDEN_PATH} ({GOLDEN_WIDTH}x{GOLDEN_HEIGHT}, {len(frames)} frames)")
+    EXPECTED_PATH.parent.mkdir(parents=True, exist_ok=True)
+    save_video(frames, EXPECTED_WIDTH, EXPECTED_HEIGHT, EXPECTED_PATH)
+    print(f"wrote {EXPECTED_PATH} ({EXPECTED_WIDTH}x{EXPECTED_HEIGHT}, {len(frames)} frames)")
 
 
 def show_window():

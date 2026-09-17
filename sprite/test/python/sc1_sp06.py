@@ -1,12 +1,12 @@
 """sc1_sp06.asm と同じ落下アニメーションをエンジンで再現し、
-録画したwebm(golden)とピクセル単位で比較するテスト。
+録画したwebm(expected)とピクセル単位で比較するテスト。
 
-goldenファイルは見やすさのためニアレストネイバーで4倍(1024x768)に
+expectedファイルは見やすさのためニアレストネイバーで4倍(1024x768)に
 拡大して保存するが、比較は実寸(256x192)に間引き戻してから行う
 (拡大は劣化しない操作なので、間引けば元のピクセル値と完全に一致する)。
 
 VP9の`gbrp`(RGBのまま符号化)を使っているのでビット完全一致かつ
-輪郭ににじみも出ない([video_golden.py](video_golden.py)参照)。
+輪郭ににじみも出ない([video_expected.py](video_expected.py)参照)。
 
 参照:
 - ソース: ../asm/sc1_sp06.asm
@@ -25,17 +25,17 @@ if str(_ENGINE_SPRITE1) not in sys.path:
     sys.path.insert(0, str(_ENGINE_SPRITE1))
 
 from stage1 import V9918  # noqa: E402
-from video_golden import save_video, load_video, surface_to_rgb, upscale_nearest, downscale_nearest  # noqa: E402
+from video_expected import save_video, load_video, surface_to_rgb, upscale_nearest, downscale_nearest  # noqa: E402
 
 # test/expected/ はpython実装専用ではなく、将来asm(openMSX)のテストなど
 # 別の実装からも同じ正解データとして参照できる共有の置き場所
-GOLDEN_PATH = pathlib.Path(__file__).resolve().parents[1] / "expected" / "sc1_sp06.webm"
+EXPECTED_PATH = pathlib.Path(__file__).resolve().parents[1] / "expected" / "sc1_sp06.webm"
 
-# goldenは見やすさのため実寸(256x192)ではなくニアレストネイバーで
+# expectedは見やすさのため実寸(256x192)ではなくニアレストネイバーで
 # 4倍に拡大して保存する(ドット絵なので拡大しても劣化しない)
 VIEW_SCALE = 4
-GOLDEN_WIDTH = V9918.SCREEN_WIDTH * VIEW_SCALE
-GOLDEN_HEIGHT = V9918.SCREEN_HEIGHT * VIEW_SCALE
+EXPECTED_WIDTH = V9918.SCREEN_WIDTH * VIEW_SCALE
+EXPECTED_HEIGHT = V9918.SCREEN_HEIGHT * VIEW_SCALE
 
 # sc1_sp06.asm の sprite_pattern_data と同じ (T, Y, P, E)
 SPRITE_PATTERNS = [
@@ -104,7 +104,7 @@ def render_frames(count: int = FRAME_COUNT):
 
 
 def render_frames_scaled(count: int = FRAME_COUNT):
-    """golden保存用: 実寸フレームをVIEW_SCALE倍にしたもの。"""
+    """expected保存用: 実寸フレームをVIEW_SCALE倍にしたもの。"""
     return [
         upscale_nearest(f, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
         for f in render_frames(count)
@@ -123,23 +123,23 @@ def test_sprites_start_offscreen():
     assert state.y == [START_Y] * 4
 
 
-def test_matches_golden_video():
-    if not GOLDEN_PATH.exists():
+def test_matches_expected_video():
+    if not EXPECTED_PATH.exists():
         raise AssertionError(
-            f"golden not found: {GOLDEN_PATH} "
+            f"expected not found: {EXPECTED_PATH} "
             "(run `python sc1_sp06.py --update-expected` once to create it)"
         )
     actual = render_frames()  # 実寸(256x192)のまま比較する
-    golden_frames = load_video(GOLDEN_PATH, GOLDEN_WIDTH, GOLDEN_HEIGHT)
+    expected_video_frames = load_video(EXPECTED_PATH, EXPECTED_WIDTH, EXPECTED_HEIGHT)
     expected = [
         downscale_nearest(f, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
-        for f in golden_frames
+        for f in expected_video_frames
     ]
     assert len(actual) == len(expected), (
         f"frame count mismatch: actual={len(actual)} expected={len(expected)}"
     )
     for i, (a, e) in enumerate(zip(actual, expected)):
-        assert a == e, f"frame {i} differs from golden"
+        assert a == e, f"frame {i} differs from expected"
 
 
 def _run_all_tests():
@@ -157,9 +157,9 @@ def _run_all_tests():
 
 def update_expected():
     frames = render_frames_scaled()
-    GOLDEN_PATH.parent.mkdir(parents=True, exist_ok=True)
-    save_video(frames, GOLDEN_WIDTH, GOLDEN_HEIGHT, GOLDEN_PATH)
-    print(f"wrote {GOLDEN_PATH} ({GOLDEN_WIDTH}x{GOLDEN_HEIGHT}, {len(frames)} frames)")
+    EXPECTED_PATH.parent.mkdir(parents=True, exist_ok=True)
+    save_video(frames, EXPECTED_WIDTH, EXPECTED_HEIGHT, EXPECTED_PATH)
+    print(f"wrote {EXPECTED_PATH} ({EXPECTED_WIDTH}x{EXPECTED_HEIGHT}, {len(frames)} frames)")
 
 
 def show_window():

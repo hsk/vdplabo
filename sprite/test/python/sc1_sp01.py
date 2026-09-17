@@ -26,14 +26,14 @@ if str(_ENGINE_SPRITE1) not in sys.path:
     sys.path.insert(0, str(_ENGINE_SPRITE1))
 
 from stage4 import V9918  # noqa: E402
-from video_golden import save_video, load_video, surface_to_rgb, upscale_nearest, downscale_nearest  # noqa: E402
+from video_expected import save_video, load_video, surface_to_rgb, upscale_nearest, downscale_nearest  # noqa: E402
 
 # test/expected/ はpython実装専用ではなく、将来asm(openMSX)のテストなど
 # 別の実装からも同じ正解データとして参照できる共有の置き場所
-GOLDEN_PATH = pathlib.Path(__file__).resolve().parents[1] / "expected" / "sc1_sp01.webm"
+EXPECTED_PATH = pathlib.Path(__file__).resolve().parents[1] / "expected" / "sc1_sp01.webm"
 VIEW_SCALE = 4
-GOLDEN_WIDTH = V9918.SCREEN_WIDTH * VIEW_SCALE
-GOLDEN_HEIGHT = V9918.SCREEN_HEIGHT * VIEW_SCALE
+EXPECTED_WIDTH = V9918.SCREEN_WIDTH * VIEW_SCALE
+EXPECTED_HEIGHT = V9918.SCREEN_HEIGHT * VIEW_SCALE
 
 # sc1_sp01.asm の sprite_pattern_data と同じ8バイト
 SPRITE_PATTERN = [
@@ -129,17 +129,17 @@ def test_magnified_footprint_extends_beyond_8x8():
     assert surface.get_at((SPRITE_X + 12, DISPLAY_Y + 12))[:3] == (255, 255, 255)
 
 
-def test_matches_golden_video():
-    if not GOLDEN_PATH.exists():
+def test_matches_expected_video():
+    if not EXPECTED_PATH.exists():
         raise AssertionError(
-            f"golden not found: {GOLDEN_PATH} "
+            f"expected not found: {EXPECTED_PATH} "
             "(run `python sc1_sp01.py --update-expected` once to create it)"
         )
     actual = surface_to_rgb(render(build_vdp()))  # 実寸(256x192)のまま比較する
-    golden_frames = load_video(GOLDEN_PATH, GOLDEN_WIDTH, GOLDEN_HEIGHT)
-    assert len(golden_frames) == 1, f"golden should have exactly 1 frame, got {len(golden_frames)}"
-    expected = downscale_nearest(golden_frames[0], V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
-    assert actual == expected, "frame differs from golden"
+    expected_video_frames = load_video(EXPECTED_PATH, EXPECTED_WIDTH, EXPECTED_HEIGHT)
+    assert len(expected_video_frames) == 1, f"expected should have exactly 1 frame, got {len(expected_video_frames)}"
+    expected = downscale_nearest(expected_video_frames[0], V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
+    assert actual == expected, "frame differs from expected"
 
 
 def _run_all_tests():
@@ -185,9 +185,9 @@ def show_window():
 def update_expected():
     frame = surface_to_rgb(render(build_vdp()))
     scaled = upscale_nearest(frame, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
-    GOLDEN_PATH.parent.mkdir(parents=True, exist_ok=True)
-    save_video([scaled], GOLDEN_WIDTH, GOLDEN_HEIGHT, GOLDEN_PATH)
-    print(f"wrote {GOLDEN_PATH} ({GOLDEN_WIDTH}x{GOLDEN_HEIGHT}, 1 frame)")
+    EXPECTED_PATH.parent.mkdir(parents=True, exist_ok=True)
+    save_video([scaled], EXPECTED_WIDTH, EXPECTED_HEIGHT, EXPECTED_PATH)
+    print(f"wrote {EXPECTED_PATH} ({EXPECTED_WIDTH}x{EXPECTED_HEIGHT}, 1 frame)")
 
 
 if __name__ == "__main__":
