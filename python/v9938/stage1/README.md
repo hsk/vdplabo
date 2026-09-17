@@ -18,4 +18,4 @@
 
 ## 現状
 
-ドキュメントは充実しているが、実装(.py)があるのは `v9938_sprite2.py` と `docs/v9938_graphics4.py` のみ。GRAPHIC3/5/6/7、TEXT2、VDPコマンド類はこれから実装する段階。実機でのVDPコマンド検証は [vdp_command/](../../vdp_command) を参照。
+ドキュメントは充実しているが、実装(.py)があるのは `v9938_sprite2.py` と `docs/v9938_graphics4.py` のみ。GRAPHIC3/5/6/7、TEXT2、VDPコマンド類はこれから実装する段階。実機でのVDPコマンド検証は [asm/vdp_command/](../../../asm/vdp_command) を参照。

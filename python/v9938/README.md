@@ -14,7 +14,7 @@ MSX2用VDP。V9918(TMS9918A互換)を土台に、GRAPHIC3〜7モード・スプ�
 - `v9938_sprite2.py` — スプライトモード2(パレット+スプライト単位カラーテーブル)の実装
 - `docs/v9938_graphics4.py` — GRAPHIC4(SCREEN5)の実装サンプル
 
-ドキュメントは充実しており、GRAPHIC3〜7の各モード解説、VDPコマンド(HMMC/YMMM/HMMM/HMMV/LMMC/LMCM/LMMM/LMMV/LINE/SRCH/PSET/POINT)の解説、GRAPHIC4向けコマンド解説(`docs/g4/`)が揃っている。一方、実装(.py)があるのはスプライトモード2とGRAPHIC4のみで、GRAPHIC3/5/6/7・TEXT2・VDPコマンド類の実装はこれから。実機でのVDPコマンド検証は [vdp_command/](../vdp_command) を参照。
+ドキュメントは充実しており、GRAPHIC3〜7の各モード解説、VDPコマンド(HMMC/YMMM/HMMM/HMMV/LMMC/LMCM/LMMM/LMMV/LINE/SRCH/PSET/POINT)の解説、GRAPHIC4向けコマンド解説(`docs/g4/`)が揃っている。一方、実装(.py)があるのはスプライトモード2とGRAPHIC4のみで、GRAPHIC3/5/6/7・TEXT2・VDPコマンド類の実装はこれから。実機でのVDPコマンド検証は [asm/vdp_command/](../../asm/vdp_command) を参照。
 
 ## stage2 — ラスタライズを意識する
 

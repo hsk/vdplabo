@@ -9,4 +9,4 @@ V9938のVDPコマンド(HMMC/HMMMなど)を、実機同等のアセンブリ(gla
 - [asm/todo.md](asm/todo.md) — スプライト関連の実験メモ(BASIC/アセンブラ両方のサンプル集)
 - [asm/rom/](asm/rom) — ビルド済みROMの出力先
 
-対応するコマンド仕様のドキュメントは [v9938/stage1/docs/v9938_cmd01hmmc.md](../v9938/stage1/docs/v9938_cmd01hmmc.md) 以降を参照してください。ここでのアセンブリ検証結果が、Python参照実装(`v9938`配下)のコマンド機能を実装する際の期待値の根拠になります。
+対応するコマンド仕様のドキュメントは [v9938/stage1/docs/v9938_cmd01hmmc.md](../../python/v9938/stage1/docs/v9938_cmd01hmmc.md) 以降を参照してください。ここでのアセンブリ検証結果が、Python参照実装(`python/v9938`配下)のコマンド機能を実装する際の期待値の根拠になります。
