@@ -9,25 +9,28 @@ class V9918:
     SCREEN_HEIGHT = 192
     SPRITE_COUNT = 32
     SPRITE_PATTERN_COUNT = 256
+    # openMSX(C-BIOS MSX2, SDLGL-PPレンダラ)で実際に描画された色を
+    # sprite/test/asm/probe_palette.asm で実測した値。データシート値の
+    # 近似ではなく実機(openMSX)の出力に合わせている。
     PALETTE = [
-        (0, 0, 0),         # 0 Transparent / black
+        (0, 0, 0),         # 0 Transparent
         (0, 0, 0),         # 1 Black
-        (33, 200, 66),     # 2 Medium green
-        (94, 220, 120),    # 3 Light green
-        (84, 85, 237),     # 4 Dark blue
-        (125, 118, 252),   # 5 Light blue
-        (212, 82, 77),     # 6 Dark red
-        (66, 235, 245),    # 7 Cyan
-        (252, 85, 84),     # 8 Medium red
-        (255, 121, 120),   # 9 Light red
-        (212, 193, 84),    # 10 Dark yellow
-        (230, 206, 128),   # 11 Light yellow
-        (33, 176, 59),     # 12 Dark green
-        (201, 91, 186),    # 13 Magenta
-        (204, 204, 204),   # 14 Gray
+        (43, 221, 43),     # 2 Medium green
+        (118, 255, 118),   # 3 Light green
+        (43, 43, 255),     # 4 Dark blue
+        (81, 118, 255),    # 5 Light blue
+        (187, 43, 43),     # 6 Dark red
+        (81, 221, 255),    # 7 Cyan
+        (255, 43, 43),     # 8 Medium red
+        (255, 118, 118),   # 9 Light red
+        (221, 221, 43),    # 10 Dark yellow
+        (221, 221, 153),   # 11 Light yellow
+        (43, 153, 43),     # 12 Dark green
+        (221, 81, 187),    # 13 Magenta
+        (187, 187, 187),   # 14 Gray
         (255, 255, 255),   # 15 White
     ]
-    
+
     def __init__(self):
         self.vram = bytearray(16 * 1024)
         self.reg = bytearray(8)
@@ -38,8 +41,13 @@ class V9918:
         self.set_sprite_mag(False)
         self.set_sprite_size16(False)
         self.set_5s(False)
-        self.set_5s_index(0)
+        self.set_5s_index(31)
         self.set_collision(False)
+        self.set_backdrop_color(0)
+    def set_backdrop_color(self, value):
+        self.reg[7] = (self.reg[7] & 0xF0) | (value & 0x0F)
+    def get_backdrop_color(self):
+        return self.reg[7] & 0x0F
     def set_sprite_pattern_table(self, addr):
         self.reg[6] = (addr >> 11) & 3
     def get_sprite_pattern_table(self):
@@ -94,9 +102,9 @@ class V9918:
         self.vram[addr + 2] = pattern & 0xff
         self.vram[addr + 3] = (color | (128 if ec else 0)) & 0xff
     def render_sprite1(self, surface):
-        surface.fill((0, 0, 0))
+        surface.fill(self.PALETTE[self.get_backdrop_color()])
         self.set_5s(False)
-        self.set_5s_index(0)
+        self.set_5s_index(31)  # オーバーしなかった場合、実機では31(32枚全走査)になる
         for y in range(self.SCREEN_HEIGHT):
             self.render_line_sprites(surface, y)
     def render_line_sprites(self, surface, y):
@@ -121,8 +129,11 @@ class V9918:
             if not (spr_y <= y < spr_y + size): continue
             sprites_on_line += 1
             if sprites_on_line > 4:
-                self.set_5s(True)
-                self.set_5s_index(i)
+                if not self.get_5s():
+                    # 1フレーム中で最初にオーバーした行の値のまま固定する
+                    # (複数行でオーバーしても、後の行で上書きしない)
+                    self.set_5s(True)
+                    self.set_5s_index(i)
                 return
             py = y - spr_y
             if mag == 2: py >>= 1

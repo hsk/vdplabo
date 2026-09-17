@@ -5,6 +5,10 @@ engine/python/sprite1/stage4.py (レジスタ駆動・スキャンライン描�
 (スプライト属性のY + 1)になる実機通りの仕様なので、DISPLAY_Y定数で
 その分のオフセットを吸収している。
 
+PALETTEと背景色(R#7)はopenMSXで実測した値を使っており、
+../expected/sc1_sp01_openmsx.webm (実機キャプチャ)とビット完全一致する
+ことを目指している(../asm/probe_palette.py 参照)。
+
 参照:
 - ソース: ../asm/sc1_sp01.asm
 - 解説:   ../docs/sc1_sp01.md
@@ -67,6 +71,9 @@ def build_vdp() -> V9918:
     vdp.set_sprite_pattern(SPRITE_PATTERN_NO, SPRITE_PATTERN)
     vdp.set_sprite(0, SPRITE_X, SPRITE_Y, SPRITE_PATTERN_NO, SPRITE_COLOR)
     vdp.set_sprite_mag(True)
+    # sc1_sp01.asm はVDPレジスタ7(背景色)を書き換えていないため、
+    # BIOSのデフォルト値(BAKCLR=4, 青)がそのまま背景色として残る。
+    vdp.set_backdrop_color(4)
     return vdp
 
 
@@ -83,24 +90,20 @@ def test_magnify_is_applied():
     assert vdp.get_sprite_mag() is True
 
 
-# stage4はまだ背景色(VDPレジスタ7, backdrop color)をモデル化しておらず、
-# 常に黒で塗りつぶす簡易実装になっている(engine/docs/sprite1/stage4.md の
-# 「未実装の機能」参照)。実機では sc1_sp01.asm がレジスタ7を書き換えていないため、
-# BIOSのデフォルト値(BAKCLR=4, 青)がそのまま背景色として残るはずで、
-# 実際に黒くはならない。ここではstage4の現在の挙動として黒であることだけを確認する。
-BACKGROUND_COLOR_UNIMPLEMENTED = (0, 0, 0)  # R#7未実装による固定背景色(実機の色ではない)
+# BIOSデフォルト(BAKCLR=4, 青)。openMSXで実測した値(PALETTE[4]と同じ)。
+BACKGROUND_COLOR = V9918.PALETTE[4]
 
 
-def test_background_is_unimplemented_black():
+def test_background_is_blue():
     surface = render(build_vdp())
-    assert surface.get_at((0, 0))[:3] == BACKGROUND_COLOR_UNIMPLEMENTED
+    assert surface.get_at((0, 0))[:3] == BACKGROUND_COLOR
 
 
 def test_sprite_top_left_corner_is_background():
     # 拡大時、画面上のオフセット(0,0)はパターン(row0,col0)に対応する。
     # 1行目のパターン 00111100 の左端(col0)はビットが立っていない
     surface = render(build_vdp())
-    assert surface.get_at((SPRITE_X, DISPLAY_Y))[:3] == BACKGROUND_COLOR_UNIMPLEMENTED
+    assert surface.get_at((SPRITE_X, DISPLAY_Y))[:3] == BACKGROUND_COLOR
 
 
 def test_sprite_center_is_white():

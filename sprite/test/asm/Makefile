@@ -8,6 +8,15 @@ sc1_%:
 	rm -rf *.o
 	openmsx -carta rom/$@.rom
 
+# パレット実測用の診断ROM。実行はせずビルドのみ(実行はprobe_palette.pyから)。
+probe_palette:
+	z88dk-z80asm -b probe_palette.asm -orom/probe_palette.rom
+	rm -rf *.o
+
+# ビルド+実測+PALETTE定数の出力まで1コマンドで行う。
+probe-palette: probe_palette
+	python3 probe_palette.py rom/probe_palette.rom
+
 sc5_%:
 	java -jar glass-0.6.jar $@.asm rom/$@.rom
 #	../../../../../msxemu/msx2_sdl/app rom/$@.rom

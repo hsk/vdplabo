@@ -8,7 +8,7 @@ engine/python/sprite1/stage4.py (レジスタ駆動・スキャンライン描�
 「asmと同じ手順でスプライト配置とSTATFL読み取りを再現できているか」
 だけを検証する。
 
-## 実機のタイミングについて(重要な近似)
+## 実機のタイミングについて
 
 実機では main_loop の1周ごとに:
 1. sprites_move で9個のテスト用スプライトのY座標を更新(RAM上のみ)
@@ -19,11 +19,15 @@ engine/python/sprite1/stage4.py (レジスタ駆動・スキャンライン描�
 つまり診断用スプライトは常に「1つ前の周で表示されていた配置」に対する
 判定結果を表示する1周分の遅延がある。このテストも同じ遅延をモデル化する。
 
-ただし実機の一番最初のフレーム(cold boot直後)は、その「1つ前の配置」が
-BIOS起動時のVRAM残留内容に依存し未定義になる。本テストはその起動直後の
-過渡状態は対象にせず、「ループが十分回った後の定常状態」を前提とする
-近似として、周期(17周: c=-8〜8)の最後(c=8)の配置を1周目の「前回」として
-扱う。
+main_loop は無限ループでc=-8..8(17状態)を繰り返すだけなので、定常状態
+(cold boot直後の最初の1回を除く)では「1つ前の状態」は必ず周期内の
+1つ前の値になる。これは近似ではなく、ループが回り続けている限り厳密に
+成り立つ関係なので、どの位相(どのcの値)から録画を始めても正しく
+フレーム列を再構成できる(render_frames の start_c 引数)。
+
+PALETTEと背景色(R#7)はopenMSXで実測した値を使っており、
+../expected/sc1_sp05_openmsx.webm (実機キャプチャ)と位相さえ合わせれば
+ビット完全一致することを目指している。
 
 参照:
 - ソース: ../asm/sc1_sp05.asm
@@ -77,6 +81,9 @@ def build_vdp() -> V9918:
     vdp = V9918()
     vdp.set_sprite_pattern(0, SPRITE_PATTERN)
     vdp.set_sprite_mag(True)
+    # sc1_sp05.asm もVDPレジスタ7(背景色)を書き換えていないため、
+    # BIOSのデフォルト値(BAKCLR=4, 青)がそのまま背景色として残る。
+    vdp.set_backdrop_color(4)
     return vdp
 
 
@@ -85,13 +92,14 @@ def sprite_y_values(c: int):
     return [Y_BASE + i * c for i in range(TEST_COUNT)]
 
 
-def evaluate_overflow(y_values):
-    """9個のテスト用スプライトのY配置から、そのフレームでVDPが記録する
-    スプライトオーバー(5S)フラグと消えたスプライト番号を計算する
-    (実機のSTATFLに相当)。
+def _single_frame_overflow(y_values):
+    """9個のテスト用スプライトのY配置**単体**を、使い捨てのVDPで1回だけ
+    描画してスプライトオーバー(5S)フラグと消えたスプライト番号を求める。
 
-    診断用スプライト自身(Y=0)がライン0近辺の判定に与える影響は、
-    テスト用スプライトのY範囲(36〜164程度)と重ならないため無視している。
+    単発の配置を確認したい単体テスト用のヘルパーであり、render_frames()の
+    ような連続動作のモデル化には使わない(実機のVDPは動き続けている1つの
+    ハードウェアなので、フレームごとに新しいVDPを作り直すような動作には
+    ならないため)。
     """
     import pygame
 
@@ -107,9 +115,25 @@ def evaluate_overflow(y_values):
     return vdp.get_5s(), vdp.get_5s_index()
 
 
-def render_frames(state_count: int = STATE_COUNT):
+def _next_c(c: int) -> int:
+    c += 1
+    return C_MIN if c == C_MAX + 1 else c
+
+
+def _prev_c(c: int) -> int:
+    c -= 1
+    return C_MAX if c == C_MIN - 1 else c
+
+
+def render_frames(state_count: int = STATE_COUNT, start_c: int = C_MIN):
     """各状態を wait_5frame と同じく WAIT_FRAMES 回複製して、
     実機の表示時間(1状態=5 VSYNC)に合わせたフレーム列を返す。
+
+    main_loop は無限ループでc=-8..8を繰り返すだけなので、周期内であれば
+    どのcから始めても「1つ前の状態」は必ず (c-1) (wrap込み) になる
+    (cold boot直後の最初の1回だけは前回が未定義になるが、そこは対象外)。
+    start_c を変えることで、実機キャプチャがどの位相から始まっていても
+    同じ位相からフレーム列を生成し直せる。
     """
     import pygame
 
@@ -118,37 +142,37 @@ def render_frames(state_count: int = STATE_COUNT):
     surface = pygame.Surface((V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT))
     frames = []
 
-    c = C_MIN
-    prev_y_values = None
+    c = start_c
+
+    # 定常状態の初期化: 1つ前の周(c-1)の配置を同じvdpで実際に描画しておき、
+    # そのときの5S状態を「前回の結果」として引き継がせる
+    # (実機は動き続けている1つのVDPなので、毎回作り直したりはしない)
+    for i, y in enumerate(sprite_y_values(_prev_c(c))):
+        vdp.set_sprite(i, X[i], y, 0, COLOR[i])
+    vdp.set_sprite(DIAG_INDEX, 0, 208, 0, 0)
+    vdp.render_sprite1(surface)
+
     for _ in range(state_count):
-        y_values = sprite_y_values(c)
-
-        if prev_y_values is None:
-            # 定常状態の近似: 1周前(c=C_MAX)の配置を「前回」とみなす
-            overflow, index = evaluate_overflow(sprite_y_values(C_MAX))
-        else:
-            overflow, index = evaluate_overflow(prev_y_values)
-
-        for i, y in enumerate(y_values):
-            vdp.set_sprite(i, X[i], y, 0, COLOR[i])
+        # このvdpが「直前の描画」で記録した5S状態を読む(実機のSTATFL相当)
+        overflow, index = vdp.get_5s(), vdp.get_5s_index()
         diag_color = DIAG_COLOR_OVERFLOW if overflow else DIAG_COLOR_NORMAL
+
+        for i, y in enumerate(sprite_y_values(c)):
+            vdp.set_sprite(i, X[i], y, 0, COLOR[i])
         vdp.set_sprite(DIAG_INDEX, index, DIAG_Y, DIAG_PATTERN, diag_color)
 
-        vdp.render_sprite1(surface)
+        vdp.render_sprite1(surface)  # ここで今回の配置の5S状態が新しく記録される
         frame = surface_to_rgb(surface)
         frames.extend([frame] * WAIT_FRAMES)
 
-        prev_y_values = y_values
-        c += 1
-        if c == C_MAX + 1:
-            c = C_MIN
+        c = _next_c(c)
     return frames
 
 
-def render_frames_scaled(state_count: int = STATE_COUNT):
+def render_frames_scaled(state_count: int = STATE_COUNT, start_c: int = C_MIN):
     return [
         upscale_nearest(f, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
-        for f in render_frames(state_count)
+        for f in render_frames(state_count, start_c)
     ]
 
 
@@ -157,24 +181,23 @@ def test_c_cycles_through_17_values():
     c = C_MIN
     for _ in range(PERIOD + 1):
         values.append(c)
-        c += 1
-        if c == C_MAX + 1:
-            c = C_MIN
+        c = _next_c(c)
     assert values == list(range(C_MIN, C_MAX + 1)) + [C_MIN]
 
 
 def test_overflow_triggers_when_all_sprites_align():
     # c=0 だと9枚全部がY=100に重なるので、5枚目(index=4)でオーバーするはず
-    overflow, index = evaluate_overflow(sprite_y_values(0))
+    overflow, index = _single_frame_overflow(sprite_y_values(0))
     assert overflow is True
     assert index == 4
 
 
 def test_no_overflow_when_widely_spaced():
-    # c=8 なら間隔が広く、5枚以上が同一ラインに重なることはないはず
-    overflow, index = evaluate_overflow(sprite_y_values(8))
+    # c=8 なら間隔が広く、5枚以上が同一ラインに重なることはないはず。
+    # オーバーしなかった場合、実機では32枚全走査し終えた値=31になる。
+    overflow, index = _single_frame_overflow(sprite_y_values(8))
     assert overflow is False
-    assert index == 0
+    assert index == 31
 
 
 def test_matches_golden_video():
@@ -231,31 +254,39 @@ def show_window():
     clock = pygame.time.Clock()
 
     c = C_MIN
-    prev_y_values = sprite_y_values(C_MAX)
+    for i, y in enumerate(sprite_y_values(_prev_c(c))):
+        vdp.set_sprite(i, X[i], y, 0, COLOR[i])
+    vdp.set_sprite(DIAG_INDEX, 0, 208, 0, 0)
+    vdp.render_sprite1(screen)
+
+    frame = 0
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-        y_values = sprite_y_values(c)
-        overflow, index = evaluate_overflow(prev_y_values)
-        for i, y in enumerate(y_values):
-            vdp.set_sprite(i, X[i], y, 0, COLOR[i])
-        diag_color = DIAG_COLOR_OVERFLOW if overflow else DIAG_COLOR_NORMAL
-        vdp.set_sprite(DIAG_INDEX, index, DIAG_Y, DIAG_PATTERN, diag_color)
 
-        vdp.render_sprite1(screen)
+        # wait_5frame と同じく、WAIT_FRAMES(5)フレームに1回だけ状態を更新する。
+        # 描画とタイマー自体は実機と同じ60FPSのまま回す。
+        if frame % WAIT_FRAMES == 0:
+            overflow, index = vdp.get_5s(), vdp.get_5s_index()
+            diag_color = DIAG_COLOR_OVERFLOW if overflow else DIAG_COLOR_NORMAL
+
+            for i, y in enumerate(sprite_y_values(c)):
+                vdp.set_sprite(i, X[i], y, 0, COLOR[i])
+            vdp.set_sprite(DIAG_INDEX, index, DIAG_Y, DIAG_PATTERN, diag_color)
+
+            vdp.render_sprite1(screen)
+            c = _next_c(c)
+
         scaled = pygame.transform.scale(
             screen, (V9918.SCREEN_WIDTH * scale, V9918.SCREEN_HEIGHT * scale)
         )
         window.blit(scaled, (0, 0))
         pygame.display.flip()
-        clock.tick(12)  # 5フレーム待ちの雰囲気に合わせてゆっくり再生
+        clock.tick(60)
 
-        prev_y_values = y_values
-        c += 1
-        if c == C_MAX + 1:
-            c = C_MIN
+        frame += 1
 
 
 if __name__ == "__main__":

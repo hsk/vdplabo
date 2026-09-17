@@ -12,13 +12,23 @@
 - [x] EC bit
 - [x] collision flag
 - [x] 5S flag
+- [x] R#7 (Text color/Back drop color register, 背景色のみ。テキスト色は未対応)
 
-### 未実装の機能
+`set_backdrop_color()`/`get_backdrop_color()`でR#7の下位4bit(BD3-BD0)を
+設定/取得し、render_sprite1がその色で背景を塗りつぶす。デフォルトは0
+(黒)で、実機のBIOSデフォルト(BAKCLR=4, 青)を再現したい場合は
+呼び出し側で明示的に`set_backdrop_color(4)`する必要がある
+(asmがR#7を書き換えていなければBIOSデフォルトが残る、という前提を
+呼び出し側のテストコードで再現する)。
 
-- [ ] R#7 (Text color/Back drop color register)
-  背景色は現状 render_sprite1 で黒固定になっている。実機ではSCREEN 1切り替え後、
-  プログラムがR#7を書き換えなければBIOSのデフォルト値(BAKCLR=4, 青)が
-  背景色として残るため、レジスタ駆動になるこの段階で対応する予定。
+### パレットについて
+
+PALETTEの値は、データシート由来の近似値ではなく
+[sprite/test/asm/probe_palette.asm](../../../test/asm/probe_palette.asm)を
+使ってopenMSX(C-BIOS MSX2, SDLGL-PPレンダラ)で実際に描画された色を
+実測した値に置き換えている。VDPパレットレジスタの生値(R/G/B各3bit)を
+そのまま線形スケールしても実測値と一致しなかった(非線形なDAC特性の
+ためと思われる)ため、実測を採用した。
 
 ### 既知の問題
 
@@ -86,3 +96,5 @@
 - C 衝突フラグ
     スプライトが衝突するとセットされる
 - 5th sprite# (5S4-5S0) 第5(第9)スプライトの番号がセットされる
+    オーバーが発生しなかった場合は32枚(0〜31)を全て走査し終えた状態になり、
+    31が入る(openMSXで実測して確認)。0にリセットされるわけではない
