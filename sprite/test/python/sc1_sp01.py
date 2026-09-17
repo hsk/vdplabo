@@ -16,7 +16,7 @@ PALETTEと背景色(R#7)はopenMSXで実測した値を使っており、
 実行方法:
     python sc1_sp01.py                 # 自動テストのみ実行
     python sc1_sp01.py --show          # pygameウィンドウで目視確認
-    python sc1_sp01.py --update-golden # ../expected/sc1_sp01.webm を再生成
+    python sc1_sp01.py --update-expected # ../expected/sc1_sp01.webm を再生成
 """
 import pathlib
 import sys
@@ -133,7 +133,7 @@ def test_matches_golden_video():
     if not GOLDEN_PATH.exists():
         raise AssertionError(
             f"golden not found: {GOLDEN_PATH} "
-            "(run `python sc1_sp01.py --update-golden` once to create it)"
+            "(run `python sc1_sp01.py --update-expected` once to create it)"
         )
     actual = surface_to_rgb(render(build_vdp()))  # 実寸(256x192)のまま比較する
     golden_frames = load_video(GOLDEN_PATH, GOLDEN_WIDTH, GOLDEN_HEIGHT)
@@ -182,7 +182,7 @@ def show_window():
         clock.tick(60)
 
 
-def update_golden():
+def update_expected():
     frame = surface_to_rgb(render(build_vdp()))
     scaled = upscale_nearest(frame, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
     GOLDEN_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -193,7 +193,7 @@ def update_golden():
 if __name__ == "__main__":
     if "--show" in sys.argv:
         show_window()
-    elif "--update-golden" in sys.argv:
-        update_golden()
+    elif "--update-expected" in sys.argv:
+        update_expected()
     else:
         sys.exit(0 if _run_all_tests() else 1)

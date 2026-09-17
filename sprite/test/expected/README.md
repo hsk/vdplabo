@@ -9,8 +9,8 @@
   openMSXや実機を使ったテストを追加する場合も同じファイルと比較する想定です
 - フォーマットの詳細(VP9 `gbrp`, 4倍拡大保存など)は
   [../python/video_golden.py](../python/video_golden.py) を参照してください
-- 生成/更新は各テストファイルを `--update-golden` 付きで実行します
-  (例: `python ../python/sc1_sp01.py --update-golden`)
+- 生成/更新は各テストファイルを `--update-expected` 付きで実行します
+  (例: `python ../python/sc1_sp01.py --update-expected`)
 
 ## `*_openmsx.webm`
 

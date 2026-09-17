@@ -36,7 +36,7 @@ PALETTEと背景色(R#7)はopenMSXで実測した値を使っており、
 実行方法:
     python sc1_sp05.py                 # 自動テストのみ実行
     python sc1_sp05.py --show          # pygameウィンドウで目視確認(ループ再生)
-    python sc1_sp05.py --update-golden # ../expected/sc1_sp05.webm を再生成
+    python sc1_sp05.py --update-expected # ../expected/sc1_sp05.webm を再生成
 """
 import pathlib
 import sys
@@ -213,7 +213,7 @@ def test_matches_golden_video():
     if not GOLDEN_PATH.exists():
         raise AssertionError(
             f"golden not found: {GOLDEN_PATH} "
-            "(run `python sc1_sp05.py --update-golden` once to create it)"
+            "(run `python sc1_sp05.py --update-expected` once to create it)"
         )
     trace = _get_shared_trace()
     actual = []
@@ -235,7 +235,7 @@ def test_matches_golden_video():
 
 
 def _run_all_tests():
-    # test_ で始まる関数だけを拾って実行する。update_golden() はこの
+    # test_ で始まる関数だけを拾って実行する。update_expected() はこの
     # 命名規則に従っていないため、ここには含まれない(意図的)。
     ok = True
     for name, fn in sorted(globals().items()):
@@ -249,10 +249,10 @@ def _run_all_tests():
     return ok
 
 
-def update_golden():
+def update_expected():
     # これはテストではなく、golden(正解データ)を書き換える専用の処理。
     # test_ で始まらないので _run_all_tests では実行されず、
-    # コマンドラインで --update-golden を指定した時だけ呼ばれる。
+    # コマンドラインで --update-expected を指定した時だけ呼ばれる。
     frames = render_frames_scaled()
     GOLDEN_PATH.parent.mkdir(parents=True, exist_ok=True)
     save_video(frames, GOLDEN_WIDTH, GOLDEN_HEIGHT, GOLDEN_PATH)
@@ -296,7 +296,7 @@ def show_window():
 if __name__ == "__main__":
     if "--show" in sys.argv:
         show_window()
-    elif "--update-golden" in sys.argv:
-        update_golden()
+    elif "--update-expected" in sys.argv:
+        update_expected()
     else:
         sys.exit(0 if _run_all_tests() else 1)

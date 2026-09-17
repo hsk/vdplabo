@@ -15,7 +15,7 @@ VP9の`gbrp`(RGBのまま符号化)を使っているのでビット完全一致
 実行方法:
     python sc1_sp06.py                 # 自動テストのみ実行
     python sc1_sp06.py --show          # pygameウィンドウで目視確認(等倍速ループ)
-    python sc1_sp06.py --update-golden # ../expected/sc1_sp06.webm を再生成
+    python sc1_sp06.py --update-expected # ../expected/sc1_sp06.webm を再生成
 """
 import pathlib
 import sys
@@ -127,7 +127,7 @@ def test_matches_golden_video():
     if not GOLDEN_PATH.exists():
         raise AssertionError(
             f"golden not found: {GOLDEN_PATH} "
-            "(run `python sc1_sp06.py --update-golden` once to create it)"
+            "(run `python sc1_sp06.py --update-expected` once to create it)"
         )
     actual = render_frames()  # 実寸(256x192)のまま比較する
     golden_frames = load_video(GOLDEN_PATH, GOLDEN_WIDTH, GOLDEN_HEIGHT)
@@ -155,7 +155,7 @@ def _run_all_tests():
     return ok
 
 
-def update_golden():
+def update_expected():
     frames = render_frames_scaled()
     GOLDEN_PATH.parent.mkdir(parents=True, exist_ok=True)
     save_video(frames, GOLDEN_WIDTH, GOLDEN_HEIGHT, GOLDEN_PATH)
@@ -203,7 +203,7 @@ def show_window():
 if __name__ == "__main__":
     if "--show" in sys.argv:
         show_window()
-    elif "--update-golden" in sys.argv:
-        update_golden()
+    elif "--update-expected" in sys.argv:
+        update_expected()
     else:
         sys.exit(0 if _run_all_tests() else 1)

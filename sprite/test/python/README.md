@@ -45,8 +45,8 @@ openMSXなど別の実装からも同じ正解データとして参照する想�
   (比較時はテスト側も同じ倍率でフレームを拡大してから突き合わせます)
 - QuickTime Playerはwebm自体に非対応です(VLC/IINA/ffplayなら再生可)。
   目視確認は`--show`のpygameウィンドウでも可能です
-- goldenの新規作成/更新は `python sc1_sp01.py --update-golden` のように
-  各テストファイルを`--update-golden`付きで実行します
+- goldenの新規作成/更新は `python sc1_sp01.py --update-expected` のように
+  各テストファイルを`--update-expected`付きで実行します
 - さらに拡大した別ファイルが欲しい場合(SNS投稿用など)は
   `python video_golden.py ../expected/sc1_sp06.webm --scale 5 --open` のように
   goldenを入力にして`video_golden.py`単体でも拡大できます(`*_view.webm`はgitignore対象)
