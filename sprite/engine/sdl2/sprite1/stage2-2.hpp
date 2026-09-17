@@ -1,8 +1,11 @@
 // ----------------------------------------
 // V9918 / TMS9918A Sprite emulator
 // ----------------------------------------
-// SDLに依存しないエンジン本体。stage1.cpp から利用する。
-// python/sprite1/stage1.py と同じ設計(Phase 1: 全画面描画)のC++移植版。
+// SDLに依存しないエンジン本体。stage2-2.cpp から利用する。
+// python/sprite1/stage2-2.py のC++移植版。
+// stage2-1 に「5th sprite」判定(手前から4枚を超えたら以降は描画しない)を
+// 追加し、実機と同じくスプライト番号の小さい順(0番から)を優先する。
+// まだ衝突判定はない。
 #pragma once
 
 #include <algorithm>
@@ -48,6 +51,8 @@ public:
 
     bool sprite_mag = false;
     bool sprite_size16 = false;
+    bool sprite_5s = false;
+    int sprite_5s_index = 0;
 
     void set_sprite_pattern(int ch, const std::array<uint8_t, 8>& data) {
         sprite_patterns_[ch] = data;
@@ -72,54 +77,65 @@ public:
     }
 
     // framebuffer: SCREEN_WIDTH * SCREEN_HEIGHT 個。1pixel = 0x00RRGGBB
-    void render_sprite1(uint32_t* framebuffer) const {
+    void render_sprite1(uint32_t* framebuffer) {
         std::fill(framebuffer, framebuffer + SCREEN_WIDTH * SCREEN_HEIGHT, PALETTE[1]);
-        // 番号の小さいスプライトほど手前に表示されるように、後ろから描画する。
-        for (int i = SPRITE_COUNT - 1; i >= 0; i--) {
-            const Sprite& spr = sprites_[i];
-            uint32_t color = PALETTE[spr.color];
+        sprite_5s = false;
+        sprite_5s_index = 0;
+        for (int y = 0; y < SCREEN_HEIGHT; y++) render_line_sprites(framebuffer, y);
+    }
 
-            struct Block { int bx, by, pat; };
-            std::array<Block, 4> blocks;
+private:
+    void render_line_sprites(uint32_t* framebuffer, int y) {
+        int sprites_on_line = 0;
+        std::array<int, SCREEN_WIDTH> draw_log{};
+        for (int i = 0; i < SPRITE_COUNT; i++) {
+            const Sprite& spr = sprites_[i];
+            int color_index = spr.color;
+            uint32_t color = PALETTE[color_index];
+            int mag = sprite_mag ? 2 : 1;
+            int size = (sprite_size16 ? 16 : 8) * mag;
+            if (!(spr.y <= y && y < spr.y + size)) continue;
+            sprites_on_line++;
+            if (sprites_on_line > 4) {
+                sprite_5s = true;
+                sprite_5s_index = i;
+                return;
+            }
+
+            int py = y - spr.y;
+            if (mag == 2) py >>= 1;
+
+            std::array<int, 2> blocks;
             int block_count;
             if (sprite_size16) {
-                int base = spr.pattern & 0xFC;
-                blocks = {Block{0, 0, base + 0}, Block{8, 0, base + 1},
-                          Block{0, 8, base + 2}, Block{8, 8, base + 3}};
-                block_count = 4;
+                int spr_ptn = spr.pattern & 0xFC;
+                if (py >= 8) {
+                    spr_ptn += 2;
+                    py -= 8;
+                }
+                blocks = {spr_ptn, spr_ptn + 1};
+                block_count = 2;
             } else {
-                blocks[0] = Block{0, 0, spr.pattern};
+                blocks[0] = spr.pattern;
                 block_count = 1;
             }
 
+            int x = spr.x;
             for (int b = 0; b < block_count; b++) {
-                const auto& pattern = sprite_patterns_[blocks[b].pat];
-                for (int py = 0; py < 8; py++) {
-                    uint8_t bits = pattern[py];
-                    for (int px = 0; px < 8; px++) {
-                        if (!(bits & (0x80 >> px))) continue;
-                        if (sprite_mag) {
-                            int x = spr.x + (blocks[b].bx + px) * 2;
-                            int y = spr.y + (blocks[b].by + py) * 2;
-                            put_pixel(framebuffer, x, y, color);
-                            put_pixel(framebuffer, x + 1, y, color);
-                            put_pixel(framebuffer, x, y + 1, color);
-                            put_pixel(framebuffer, x + 1, y + 1, color);
-                        } else {
-                            int x = spr.x + blocks[b].bx + px;
-                            int y = spr.y + blocks[b].by + py;
-                            put_pixel(framebuffer, x, y, color);
+                uint8_t bits = sprite_patterns_[blocks[b]][py];
+                for (int px = 0; px < 8; px++) {
+                    for (int m = 0; m < mag; m++) {
+                        if (x >= 0 && x < SCREEN_WIDTH && (bits & (0x80 >> px))) {
+                            if (draw_log[x] == 0) {
+                                draw_log[x] = color_index;
+                                framebuffer[y * SCREEN_WIDTH + x] = color;
+                            }
                         }
+                        x++;
                     }
                 }
             }
         }
-    }
-
-private:
-    static void put_pixel(uint32_t* framebuffer, int x, int y, uint32_t color) {
-        if (x < 0 || x >= SCREEN_WIDTH || y < 0 || y >= SCREEN_HEIGHT) return;
-        framebuffer[y * SCREEN_WIDTH + x] = color;
     }
 
     std::array<Sprite, SPRITE_COUNT> sprites_{};

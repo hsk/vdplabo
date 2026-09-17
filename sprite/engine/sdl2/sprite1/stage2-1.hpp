@@ -1,8 +1,11 @@
 // ----------------------------------------
 // V9918 / TMS9918A Sprite emulator
 // ----------------------------------------
-// SDLに依存しないエンジン本体。stage1.cpp から利用する。
-// python/sprite1/stage1.py と同じ設計(Phase 1: 全画面描画)のC++移植版。
+// SDLに依存しないエンジン本体。stage2-1.cpp から利用する。
+// python/sprite1/stage2-1.py のC++移植版。
+// Phase 2 の最初のステップ: 1ライン描画にするだけで、
+// 5th sprite フラグや衝突判定はまだない(スプライト優先順位は python 版と
+// 同じく手前から数えて5枚目以降を黙って捨てる)。
 #pragma once
 
 #include <algorithm>
@@ -74,52 +77,53 @@ public:
     // framebuffer: SCREEN_WIDTH * SCREEN_HEIGHT 個。1pixel = 0x00RRGGBB
     void render_sprite1(uint32_t* framebuffer) const {
         std::fill(framebuffer, framebuffer + SCREEN_WIDTH * SCREEN_HEIGHT, PALETTE[1]);
-        // 番号の小さいスプライトほど手前に表示されるように、後ろから描画する。
+        for (int y = 0; y < SCREEN_HEIGHT; y++) render_line_sprites(framebuffer, y);
+    }
+
+private:
+    void render_line_sprites(uint32_t* framebuffer, int y) const {
+        int sprites_on_line = 0;
+        // 番号の小さいスプライトほど手前に表示されるように、後ろから見ていく。
         for (int i = SPRITE_COUNT - 1; i >= 0; i--) {
             const Sprite& spr = sprites_[i];
             uint32_t color = PALETTE[spr.color];
+            int mag = sprite_mag ? 2 : 1;
+            int size = (sprite_size16 ? 16 : 8) * mag;
+            if (!(spr.y <= y && y < spr.y + size)) continue;
+            sprites_on_line++;
+            if (sprites_on_line > 4) break;
 
-            struct Block { int bx, by, pat; };
-            std::array<Block, 4> blocks;
+            int py = y - spr.y;
+            if (mag == 2) py >>= 1;
+
+            std::array<int, 2> blocks;
             int block_count;
             if (sprite_size16) {
-                int base = spr.pattern & 0xFC;
-                blocks = {Block{0, 0, base + 0}, Block{8, 0, base + 1},
-                          Block{0, 8, base + 2}, Block{8, 8, base + 3}};
-                block_count = 4;
+                int spr_ptn = spr.pattern & 0xFC;
+                if (py >= 8) {
+                    spr_ptn += 2;
+                    py -= 8;
+                }
+                blocks = {spr_ptn, spr_ptn + 1};
+                block_count = 2;
             } else {
-                blocks[0] = Block{0, 0, spr.pattern};
+                blocks[0] = spr.pattern;
                 block_count = 1;
             }
 
+            int x = spr.x;
             for (int b = 0; b < block_count; b++) {
-                const auto& pattern = sprite_patterns_[blocks[b].pat];
-                for (int py = 0; py < 8; py++) {
-                    uint8_t bits = pattern[py];
-                    for (int px = 0; px < 8; px++) {
-                        if (!(bits & (0x80 >> px))) continue;
-                        if (sprite_mag) {
-                            int x = spr.x + (blocks[b].bx + px) * 2;
-                            int y = spr.y + (blocks[b].by + py) * 2;
-                            put_pixel(framebuffer, x, y, color);
-                            put_pixel(framebuffer, x + 1, y, color);
-                            put_pixel(framebuffer, x, y + 1, color);
-                            put_pixel(framebuffer, x + 1, y + 1, color);
-                        } else {
-                            int x = spr.x + blocks[b].bx + px;
-                            int y = spr.y + blocks[b].by + py;
-                            put_pixel(framebuffer, x, y, color);
+                uint8_t bits = sprite_patterns_[blocks[b]][py];
+                for (int px = 0; px < 8; px++) {
+                    for (int m = 0; m < mag; m++) {
+                        if (x >= 0 && x < SCREEN_WIDTH && (bits & (0x80 >> px))) {
+                            framebuffer[y * SCREEN_WIDTH + x] = color;
                         }
+                        x++;
                     }
                 }
             }
         }
-    }
-
-private:
-    static void put_pixel(uint32_t* framebuffer, int x, int y, uint32_t color) {
-        if (x < 0 || x >= SCREEN_WIDTH || y < 0 || y >= SCREEN_HEIGHT) return;
-        framebuffer[y * SCREEN_WIDTH + x] = color;
     }
 
     std::array<Sprite, SPRITE_COUNT> sprites_{};
