@@ -11,7 +11,7 @@
 ## 1. Phase 1: 全画面描画
 
 まずは「動くものを作る」。sprite1のPhase1に、スプライトモード2固有の
-色指定・重ね合わせを追加する。stage1で実装済み。
+色指定・重ね合わせを追加する。実装済み。
 
 ### 1.1. 特徴
 
@@ -21,21 +21,19 @@
 - VRAM直接参照しない
 - レジスタ簡略化
 
-### 1.2. 実装する機能
+### 1.2. 実装した機能
 
-- [x] 8x8 sprite
-- [x] 16x16
-- [x] magnify
-- [x] sprite color table (行ごとの色指定)
-- [x] CCビットによる色の重ね合わせ(OR)
-- [ ] color 0 transparent
+- 8x8 sprite
+- 16x16
+- magnify
+- sprite color table (行ごとの色指定)
+- CCビットによる色の重ね合わせ(OR)
 
-### 1.3. 後回し
+### 1.3. 未実装
 
-- collision
-- 9th sprite
-- scanline
-- EC
+- color 0 transparent(Phase 2以降で対応)
+
+collision・9th sprite・scanline化はPhase 2以降で扱う。
 
 ### 1.4. 目的
 
@@ -45,7 +43,7 @@
 
 ## 2. Phase 2: 1ライン描画(scanline)
 
-MSX2/V9938らしい構造へ移行。
+MSX2/V9938らしい構造へ移行。未着手。
 
 ### 2.1. 特徴
 
@@ -56,12 +54,12 @@ MSX2/V9938らしい構造へ移行。
 
 ### 2.2. 実装する機能
 
-- [ ] scanline sprite描画
-- [ ] 1ライン8枚制限
-- [ ] 9th sprite
-- [ ] sprite priority
-- [ ] collision
-- [ ] Y判定
+- scanline sprite描画
+- 1ライン8枚制限
+- 9th sprite
+- sprite priority
+- collision
+- Y判定
 
 ### 2.3. 目的
 
@@ -71,7 +69,7 @@ MSX2/V9938らしい構造へ移行。
 
 ## 3. Phase 3: VRAM使用
 
-VDP構造へ移行。
+VDP構造へ移行。未着手。
 
 ### 3.1. 特徴
 
@@ -81,12 +79,12 @@ VDP構造へ移行。
 
 ### 3.2. 実装する機能
 
-- [ ] Sprite Attribute Table
-- [ ] Sprite Generator Table
-- [ ] Sprite Color Table (行ごとの色+CCビット)
-- [ ] pattern address計算
-- [ ] Y=208終端
-- [ ] 16x16 pattern連結
+- Sprite Attribute Table
+- Sprite Generator Table
+- Sprite Color Table (行ごとの色+CCビット)
+- pattern address計算
+- Y=208終端
+- 16x16 pattern連結
 
 ### 3.3. 目的
 
@@ -96,7 +94,7 @@ VDP構造へ移行。
 
 ## 4. Phase 4: レジスタ駆動
 
-完全なVDP化。テーブルアドレス計算・ステータスレジスタの詳細は
+完全なVDP化。未着手。テーブルアドレス計算・ステータスレジスタの詳細は
 [stage4.md](stage4.md) を参照。
 
 ### 4.1. 特徴
@@ -107,12 +105,12 @@ VDP構造へ移行。
 
 ### 4.2. 実装する機能
 
-- [ ] sprite size register
-- [ ] magnify register
-- [ ] table base register (R#5, R#6, R#11)
-- [ ] status register (5S, collision, 5th sprite#)
-- [ ] EC bit
-- [ ] SPD(スプライト非表示)ビット
+- sprite size register
+- magnify register
+- table base register (R#5, R#6, R#11)
+- status register (5S, collision, 5th sprite#)
+- EC bit
+- SPD(スプライト非表示)ビット
 
 ### 4.3. 目的
 

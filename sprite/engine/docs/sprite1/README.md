@@ -2,7 +2,7 @@
 
 ## 1. Phase 1: 全画面描画
 
-まずは「動くものを作る」。
+まずは「動くものを作る」。実装済み。
 
 ### 1.1. 特徴
 
@@ -12,23 +12,21 @@
 - VRAM直接参照しない
 - レジスタ簡略化
 
-### 1.2. 実装する機能
+### 1.2. 実装した機能
 
-- [x] 8x8 sprite
-- [x] 16x16
-- [x] magnify
-- [x] 単色描画
-- color 0 transparent
-- [x] SAT読み込み
-- [x] pattern描画
-- [x] パレット描画
+- 8x8 sprite
+- 16x16
+- magnify
+- 単色描画
+- SAT読み込み
+- pattern描画
+- パレット描画
 
-### 1.3. 後回し
+### 1.3. 未実装
 
-- collision
-- 5S
-- scanline
-- EC
+- color 0 transparent(Phase 2以降で対応)
+
+衝突判定・5th sprite・scanline化・Early ClockはPhase 2以降で扱う。
 
 ### 1.4. 目的
 
@@ -38,7 +36,7 @@
 
 ## 2. Phase 2: 1ライン描画(scanline)
 
-MSX/TMS9918らしい構造へ移行。
+MSX/TMS9918らしい構造へ移行。実装済み。
 
 ### 2.1. 特徴
 
@@ -47,14 +45,14 @@ MSX/TMS9918らしい構造へ移行。
 - raster構造
 - VDP寄り
 
-### 2.2. 実装する機能
+### 2.2. 実装した機能
 
-- [x] scanline sprite描画
-- [x] 1ライン4枚制限
-- [ ] 5th sprite
-- [ ] sprite priority
-- [ ] collision
-- [x] Y判定
+- scanline sprite描画
+- 1ライン4枚制限
+- 5th sprite
+- sprite priority
+- collision
+- Y判定
 
 ### 2.3. この段階でMSX感がかなり出る
 
@@ -70,7 +68,7 @@ MSX/TMS9918らしい構造へ移行。
 
 ## 3. Phase 3: VRAM使用
 
-VDP構造へ移行。
+VDP構造へ移行。実装済み。
 
 ### 3.1. 特徴
 
@@ -78,13 +76,13 @@ VDP構造へ移行。
 - CPU memory と分離
 - VDP memory map 化
 
-### 3.2. 実装する機能
+### 3.2. 実装した機能
 
-- [ ] Sprite Attribute Table
-- [ ] Sprite Generator Table
-- [ ] pattern address計算
-- [ ] Y=208終端
-- [ ] 16x16 pattern連結
+- Sprite Attribute Table
+- Sprite Generator Table
+- pattern address計算
+- Y=208終端
+- 16x16 pattern連結
 
 ### 3.3. この段階でできること
 
@@ -100,7 +98,7 @@ VDP構造へ移行。
 
 ## 4. Phase 4: レジスタ駆動
 
-完全なVDP化。
+完全なVDP化。実装済み。
 
 ### 4.1. 特徴
 
@@ -108,15 +106,15 @@ VDP構造へ移行。
 - mode依存
 - 実機互換
 
-### 4.2. 実装する機能
+### 4.2. 実装した機能
 
 - sprite size register
 - magnify register
 - table base register
 - status register
-- [ ] EC bit
-- [ ] collision flag
-- [ ] 5S flag
+- EC bit
+- collision flag
+- 5S flag
 
 ### 4.3. この段階でできること
 
