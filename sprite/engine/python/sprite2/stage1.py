@@ -4,6 +4,7 @@
 import pygame
 import sys
 import random
+import math
 class V9938:
     SCREEN_WIDTH  = 256
     SCREEN_HEIGHT = 192
@@ -107,7 +108,7 @@ class V9938:
                                         surface.set_at((x, y), color)
                                     elif cc_bit:
                                         draw_buffer[x+self.SCREEN_WIDTH*y] |= color_byte
-                                        surface.set_at((x, y), draw_buffer[x+self.SCREEN_WIDTH*y])
+                                        surface.set_at((x, y), self.PALETTE[draw_buffer[x+self.SCREEN_WIDTH*y]])
 if __name__ == "__main__":
     vdp = V9938()
     def machine(rom):
@@ -198,7 +199,9 @@ if __name__ == "__main__":
                 0b0000001111000000,
                 0b0000000110000000,
             ])
-            self.sps = [{} for _ in range(32)]
+            # ベン図デモ用の8x8塗りつぶしパターン(重なりが見やすいように塗りつぶす)
+            vdp.set_sprite_pattern(2, [0xFF] * 8)
+            self.sps = [{} for _ in range(29)]
             # Create sprites
             for i,s in enumerate(self.sps):
                 s["x"] = 16 + i * 6
@@ -207,6 +210,17 @@ if __name__ == "__main__":
                 s["dx"] = random.randint(-20,20)/10.0
                 s["dy"] = random.randint(-20,20)/10.0
                 vdp.set_sprite_color(i, [s["color"]]*8)
+            # 残り3枚(29,30,31番)はCCビットを立てた重ね合わせデモ用に固定で使う。
+            # 3枚が同じ中心の周りを回りながら、半径が伸び縮みして
+            # 近づいて重なったり離れたりを繰り返す。重なった瞬間は色がORされて変わる。
+            self.venn_center = (24, 20)
+            self.venn = [
+                {"index": 29, "phase": 0.0, "color": 2},              # Medium green
+                {"index": 30, "phase": 2 * math.pi / 3, "color": 4},  # Dark blue
+                {"index": 31, "phase": 4 * math.pi / 3, "color": 8},  # Medium red
+            ]
+            for v in self.venn:
+                vdp.set_sprite_color(v["index"], [v["color"] | 0x40]*8)
             self.mode = 3
         def run(self,frame):
             if frame % 180 == 0:
@@ -223,6 +237,16 @@ if __name__ == "__main__":
                         s["pattern"] = ((i % 2) + 1) * 4
                     else:
                         s["pattern"] = i % 2
+            # 重ね合わせデモの3枚: 半径が伸び縮みしながら共通の中心を回り、
+            # 近づいて重なる瞬間と離れる瞬間を繰り返す。
+            venn_pattern = 8 if vdp.sprite_size16 else 2
+            radius = 4 + 4 * math.sin(frame * 0.02)
+            cx, cy = self.venn_center
+            for v in self.venn:
+                angle = v["phase"] + frame * 0.03
+                vx = cx + radius * math.cos(angle)
+                vy = cy + radius * math.sin(angle)
+                vdp.set_sprite(v["index"], int(vx), int(vy), venn_pattern, v["color"])
             for i, s in enumerate(self.sps):
                 s["x"] += s["dx"]
                 s["y"] += s["dy"]
