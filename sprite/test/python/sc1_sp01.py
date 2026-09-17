@@ -1,5 +1,10 @@
 """sc1_sp01.asm と同じVRAM設定をエンジンで再現し、描画結果を検証するテスト。
 
+engine/python/sprite1/stage4.py (レジスタ駆動・スキャンライン描画で
+実機に近い挙動)を使用する。stage4は表示上のY座標が
+(スプライト属性のY + 1)になる実機通りの仕様なので、DISPLAY_Y定数で
+その分のオフセットを吸収している。
+
 参照:
 - ソース: ../asm/sc1_sp01.asm
 - 解説:   ../docs/sc1_sp01.md
@@ -16,7 +21,7 @@ _ENGINE_SPRITE1 = pathlib.Path(__file__).resolve().parents[2] / "engine" / "pyth
 if str(_ENGINE_SPRITE1) not in sys.path:
     sys.path.insert(0, str(_ENGINE_SPRITE1))
 
-from stage1 import V9918  # noqa: E402
+from stage4 import V9918  # noqa: E402
 from video_golden import save_video, load_video, surface_to_rgb, upscale_nearest, downscale_nearest  # noqa: E402
 
 GOLDEN_PATH = pathlib.Path(__file__).resolve().parent / "goldens" / "sc1_sp01.webm"
@@ -42,6 +47,10 @@ SPRITE_Y = 100
 SPRITE_PATTERN_NO = 0
 SPRITE_COLOR = 15  # 白
 
+# stage4はスプライト属性のYをそのまま使わず、実機のV9918と同じく
+# 表示上のY座標は (属性のY + 1) になる。X側にはこのオフセットは無い。
+DISPLAY_Y = SPRITE_Y + 1
+
 
 def build_vdp() -> V9918:
     """sc1_sp01.asm の init 相当のセットアップを行う。
@@ -55,7 +64,7 @@ def build_vdp() -> V9918:
     vdp = V9918()
     vdp.set_sprite_pattern(SPRITE_PATTERN_NO, SPRITE_PATTERN)
     vdp.set_sprite(0, SPRITE_X, SPRITE_Y, SPRITE_PATTERN_NO, SPRITE_COLOR)
-    vdp.sprite_mag = True
+    vdp.set_sprite_mag(True)
     return vdp
 
 
@@ -69,42 +78,41 @@ def render(vdp: V9918):
 
 def test_magnify_is_applied():
     vdp = build_vdp()
-    assert vdp.sprite_mag is True
+    assert vdp.get_sprite_mag() is True
 
 
-# stage1エンジン(render_sprite1)は背景色(VDPレジスタ7, backdrop color)を
-# モデル化しておらず、常に黒で塗りつぶす簡易実装になっている。
-# 実機では sc1_sp01.asm がレジスタ7を書き換えていないため、
+# stage4はまだ背景色(VDPレジスタ7, backdrop color)をモデル化しておらず、
+# 常に黒で塗りつぶす簡易実装になっている(engine/docs/sprite1/stage4.md の
+# 「未実装の機能」参照)。実機では sc1_sp01.asm がレジスタ7を書き換えていないため、
 # BIOSのデフォルト値(BAKCLR=4, 青)がそのまま背景色として残るはずで、
-# 実際に黒くはならない。背景色の実機再現はstage4(レジスタ駆動)で
-# 対応する計画のため、ここではstage1の現在の挙動として黒であることだけを確認する。
-BACKGROUND_COLOR_STAGE1 = (0, 0, 0)  # stage1の簡易実装での固定背景色(実機の色ではない)
+# 実際に黒くはならない。ここではstage4の現在の挙動として黒であることだけを確認する。
+BACKGROUND_COLOR_UNIMPLEMENTED = (0, 0, 0)  # R#7未実装による固定背景色(実機の色ではない)
 
 
-def test_background_is_stage1_default_black():
+def test_background_is_unimplemented_black():
     surface = render(build_vdp())
-    assert surface.get_at((0, 0))[:3] == BACKGROUND_COLOR_STAGE1
+    assert surface.get_at((0, 0))[:3] == BACKGROUND_COLOR_UNIMPLEMENTED
 
 
 def test_sprite_top_left_corner_is_background():
     # 拡大時、画面上のオフセット(0,0)はパターン(row0,col0)に対応する。
     # 1行目のパターン 00111100 の左端(col0)はビットが立っていない
     surface = render(build_vdp())
-    assert surface.get_at((SPRITE_X, SPRITE_Y))[:3] == BACKGROUND_COLOR_STAGE1
+    assert surface.get_at((SPRITE_X, DISPLAY_Y))[:3] == BACKGROUND_COLOR_UNIMPLEMENTED
 
 
 def test_sprite_center_is_white():
     # 拡大時、画面上のオフセット(4,4)はパターン(row2,col2)に対応する。
     # 3行目のパターン 11111111 は全ビット立っている
     surface = render(build_vdp())
-    assert surface.get_at((SPRITE_X + 4, SPRITE_Y + 4))[:3] == (255, 255, 255)
+    assert surface.get_at((SPRITE_X + 4, DISPLAY_Y + 4))[:3] == (255, 255, 255)
 
 
 def test_sprite_top_edge_is_white():
     # 拡大時、画面上のオフセット(4,0)はパターン(row0,col2)に対応する。
     # 1行目のパターン 00111100 の3ビット目(0-indexed col=2)はビットが立っている
     surface = render(build_vdp())
-    assert surface.get_at((SPRITE_X + 4, SPRITE_Y))[:3] == (255, 255, 255)
+    assert surface.get_at((SPRITE_X + 4, DISPLAY_Y))[:3] == (255, 255, 255)
 
 
 def test_magnified_footprint_extends_beyond_8x8():
@@ -113,7 +121,7 @@ def test_magnified_footprint_extends_beyond_8x8():
     # パターン(row6,col6)=01111110のcol6ビットが立っているため白になるはず。
     # これが白ければ拡大が実際に効いている証拠になる。
     surface = render(build_vdp())
-    assert surface.get_at((SPRITE_X + 12, SPRITE_Y + 12))[:3] == (255, 255, 255)
+    assert surface.get_at((SPRITE_X + 12, DISPLAY_Y + 12))[:3] == (255, 255, 255)
 
 
 def test_matches_golden_video():
