@@ -65,6 +65,7 @@ CBIOSさえあればディスクやBASICのROMがなくても動くので便利
 - 5th sprite# (5S4-5S0) 第5(第9)スプライトの番号がセットされる
 - [x] [sc1_sp05.asm](../asm/sc1_sp05.asm) スプライト個数制限チェック4個 ([解説](sc1_sp05.md))
   - 参考 [basic/sc1_sp03.bas](../basic/sc1_sp03.bas)
+  - 参考 [python/sc1_sp05.py](../python/sc1_sp05.py) エンジンで再現しwebm goldenと比較するテスト(5th sprite判定を検証)
 - [x] [sc1_sp06.asm](../asm/sc1_sp06.asm) 一定速度落下アニメーション ([解説](sc1_sp06.md))
   - 参考 [python/sc1_sp06.py](../python/sc1_sp06.py) エンジンで再現しwebm goldenと比較するテスト
 - [x] [sc1_sp07.asm](../asm/sc1_sp07.asm) 減速付きの落下アニメーション ([解説](sc1_sp07.md))
