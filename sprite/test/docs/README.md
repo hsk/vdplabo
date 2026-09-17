@@ -57,6 +57,7 @@ CBIOSさえあればディスクやBASICのROMがなくても動くので便利
 インクルードやライブラリの使用もなくワンソースで動くと密結合になるけど便利かな
 
 - [x] [sc1_sp01.asm](../asm/sc1_sp01.asm) 8x8のスプライトを表示 ([解説](sc1_sp01.md))
+  - 参考 [python/sc1_sp01.py](../python/sc1_sp01.py) エンジンで再現し描画結果を検証するテスト
 - [x] [sc1_sp02.asm](../asm/sc1_sp02.asm) 8x8の3つのスプライトを表示 ([解説](sc1_sp02.md))
 - [x] [sc1_sp03.asm](../asm/sc1_sp03.asm) 動かす ([解説](sc1_sp03.md))
 - [x] [sc1_sp04.asm](../asm/sc1_sp04.asm) 衝突判定 ([解説](sc1_sp04.md))
