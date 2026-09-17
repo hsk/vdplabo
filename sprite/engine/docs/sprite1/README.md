@@ -14,21 +14,17 @@
 
 ### 1.2. 実装した機能
 
-- 8x8 sprite
-- 16x16
-- magnify
-- 単色描画
-- SAT読み込み
-- pattern描画
-- パレット描画
+- [x] 8x8 sprite
+- [x] 16x16
+- [x] magnify
+- [x] 単色描画
+- [x] SAT読み込み
+- [x] pattern描画
+- [x] パレット描画
 
-### 1.3. 未実装
+color 0 transparent・衝突判定・5th sprite・scanline化・Early Clockはこの段階では意図的に対象外(Phase 2以降で扱う)。
 
-- color 0 transparent(Phase 2以降で対応)
-
-衝突判定・5th sprite・scanline化・Early ClockはPhase 2以降で扱う。
-
-### 1.4. 目的
+### 1.3. 目的
 
 まず sprite が表示されること。
 
@@ -47,12 +43,12 @@ MSX/TMS9918らしい構造へ移行。実装済み。
 
 ### 2.2. 実装した機能
 
-- scanline sprite描画
-- 1ライン4枚制限
-- 5th sprite
-- sprite priority
-- collision
-- Y判定
+- [x] scanline sprite描画
+- [x] 1ライン4枚制限
+- [x] 5th sprite
+- [x] sprite priority
+- [x] collision
+- [x] Y判定
 
 ### 2.3. この段階でMSX感がかなり出る
 
@@ -78,11 +74,11 @@ VDP構造へ移行。実装済み。
 
 ### 3.2. 実装した機能
 
-- Sprite Attribute Table
-- Sprite Generator Table
-- pattern address計算
-- Y=208終端
-- 16x16 pattern連結
+- [x] Sprite Attribute Table
+- [x] Sprite Generator Table
+- [x] pattern address計算
+- [x] Y=208終端
+- [x] 16x16 pattern連結
 
 ### 3.3. この段階でできること
 
@@ -108,13 +104,13 @@ VDP構造へ移行。実装済み。
 
 ### 4.2. 実装した機能
 
-- sprite size register
-- magnify register
-- table base register
-- status register
-- EC bit
-- collision flag
-- 5S flag
+- [x] sprite size register
+- [x] magnify register
+- [x] table base register
+- [x] status register
+- [x] EC bit
+- [x] collision flag
+- [x] 5S flag
 
 ### 4.3. この段階でできること
 

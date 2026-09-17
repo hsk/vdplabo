@@ -1,5 +1,16 @@
 # sprite2/stage4 について
 
+Phase 4: レジスタ駆動。未着手。
+
+- [ ] sprite size register
+- [ ] magnify register
+- [ ] table base register (R#5, R#6, R#11)
+- [ ] status register (5S, collision, 5th sprite#)
+- [ ] EC bit
+- [ ] SPD(スプライト非表示)ビット
+
+## 参考資料
+
 |      |   7 |   6 |   5 |   4 |   3 |   2 |   1 |   0 |                                                      |
 | ---- | --- | --- | --- | --- | --- | --- | --- | --- | ---------------------------------------------------- |
 | R#5  | A14 | A13 | A12 | A11 | A10 | A9  |   1 |   1 | Sprite attribute table base address register low     |

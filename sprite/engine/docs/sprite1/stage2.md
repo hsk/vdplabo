@@ -13,6 +13,18 @@
 描画できる場合は、ライン番号をスプライトのy座標から引いたスプライトの行を描画します。
 行ごとに表示できるようになったので1行ごとのスプライト数による制限も行います。
 
+## 実装した機能
+
+- [x] scanline sprite描画
+- [x] 1ライン4枚制限
+- [x] 5th sprite
+- [x] sprite priority
+- [x] collision
+- [x] Y判定
+- [x] color 0 transparent
+- [x] Y=208終端
+- [x] Early Clock(EC)
+
 ## sprite1/stage2-1: ライン描画導入
 
 - renderLine(y)

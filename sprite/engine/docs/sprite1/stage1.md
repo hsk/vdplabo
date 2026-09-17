@@ -7,3 +7,15 @@
 
 当たり判定や、ラインごとの表示制限はありません。
 また指定Y座標のスプライトがあるとそれ以降のスプライトが描画されないということもありません。
+
+## 実装した機能
+
+- [x] 8x8 sprite
+- [x] 16x16
+- [x] magnify
+- [x] 単色描画
+- [x] SAT読み込み
+- [x] pattern描画
+- [x] パレット描画
+
+color 0 transparent・衝突判定・5th sprite・scanline化・Early Clockはこの段階では意図的に対象外(Phase 2以降で扱う)。

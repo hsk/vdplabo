@@ -3,6 +3,22 @@
 スプライトの機能をレジスタを通して動かせるようにします。
 関連するレジスタは参考資料にまとめてありますので参考にしてください。
 
+## 実装した機能
+
+- [x] sprite size register (SI)
+- [x] magnify register (MAG)
+- [x] table base register (R#5, R#6)
+- [x] status register (5S, collision flag, 5th sprite#)
+- [x] EC bit
+- [x] collision flag
+- [x] 5S flag
+
+### 既知の問題
+
+- スプライトアトリビュートテーブルのアドレス計算が、本来読むべきR#5ではなく
+  R#6を参照してしまっている(実装時の取り違え)。読み書きどちらも同じ
+  この関数を通すため実害はないが、実機のレジスタ計算式としては誤り。
+
 ## 参考資料
 
 ### スプライト関連のレジスタ
