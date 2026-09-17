@@ -9,5 +9,5 @@ __pycache__/
 *.log
 *.sym
 
-# 見た目確認用に拡大書き出ししたwebm (video_golden.py で再生成できる)
+# 見た目確認用に拡大書き出ししたwebm (video_expected.py で再生成できる)
 *_view.webm
