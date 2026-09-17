@@ -17,16 +17,11 @@ VP9の`gbrp`(RGBのまま符号化)を使っているのでビット完全一致
     python sc1_sp06.py --show          # pygameウィンドウで目視確認(等倍速ループ)
     python sc1_sp06.py --update-expected # ../expected/sc1_sp06.webm を再生成
 """
-import sys
-
-from test_support import add_engine_path, expected_path_for, render_expected_frames, compare_to_expected, write_expected, main  # noqa: E402
+from test_support import add_engine_path, assert_matches_expected_video, render_and_write_expected, main  # noqa: E402
 
 add_engine_path(__file__)
 
 from stage1 import V9918  # noqa: E402
-
-EXPECTED_PATH = expected_path_for(__file__, "sc1_sp06.webm")
-VIEW_SCALE = 4
 
 # sc1_sp06.asm の sprite_pattern_data と同じ (T, Y, P, E)
 SPRITE_PATTERNS = [
@@ -73,18 +68,17 @@ class SpriteState:
 
 
 class Simulation:
-    """1回目のstep()は「sprite_init直後、まだ動く前」の初期状態を描画し、
-    2回目以降はsprites_moveと同じロジックでYを1フレーム進めてから描画する。
+    """1回目のstep()は「sprite_init直後、まだ動く前」の初期状態を用意し、
+    2回目以降はsprites_moveと同じロジックでYを1フレーム進める。
     (実機のframe_counterはstep()の呼び出し回数-1に対応する)
+
+    vdpと状態だけを持つ状態機械で、surfaceの作成・vdp.render(surface)の
+    呼び出しは呼び出し側(test_support)の責務。
     """
 
     def __init__(self):
-        import pygame
-
-        pygame.init()
         self.vdp = build_vdp()
         self.state = SpriteState()
-        self.surface = pygame.Surface((V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT))
         self._counter = 0
 
     def step(self):
@@ -92,7 +86,6 @@ class Simulation:
             self.state.advance(self._counter)
         for i in range(4):
             self.vdp.set_sprite(i, START_X[i], self.state.y[i], i, COLOR)
-        self.vdp.render_sprite1(self.surface)
         self._counter += 1
 
 
@@ -109,44 +102,19 @@ def test_sprites_start_offscreen():
 
 
 def test_matches_expected_video():
-    actual = render_expected_frames(Simulation, count=FRAME_COUNT)
-    compare_to_expected(actual, EXPECTED_PATH, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE, __file__)
-
-
-def show_window():
-    """目視確認用: pygameウィンドウでアニメーションを等倍速でループ再生する。"""
-    import pygame
-
-    sim = Simulation()
-    scale = 3
-    window = pygame.display.set_mode(
-        (V9918.SCREEN_WIDTH * scale, V9918.SCREEN_HEIGHT * scale)
-    )
-    pygame.display.set_caption("sc1_sp06")
-    clock = pygame.time.Clock()
-    cycle_len = 300  # 255フレーム + 1秒待ち相当のループ間隔
-    frame = 0
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-        if frame % cycle_len == 0:
-            sim = Simulation()
-        sim.step()
-        scaled = pygame.transform.scale(
-            sim.surface, (V9918.SCREEN_WIDTH * scale, V9918.SCREEN_HEIGHT * scale)
-        )
-        window.blit(scaled, (0, 0))
-        pygame.display.flip()
-        clock.tick(60)
-        frame += 1
+    assert_matches_expected_video(Simulation, FRAME_COUNT, __file__)
 
 
 def update_expected():
-    frames = render_expected_frames(Simulation, count=FRAME_COUNT)
-    write_expected(frames, EXPECTED_PATH, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
+    render_and_write_expected(Simulation, FRAME_COUNT, __file__)
+
+
+# sc1_sp06.asmはwait_vsyncのみで毎フレームsprites_moveするので、
+# --show もwait_framesデフォルト(1)のまま毎フレームstep()すればよい。
+# FRAME_COUNT分で静止したあと、少し見せてからループを再開する。
+SHOW_CYCLE_FRAMES = FRAME_COUNT + 210
 
 
 if __name__ == "__main__":
-    main(globals(), show_window, update_expected)
+    main(globals(), Simulation, "sc1_sp06",
+         update_expected=update_expected, cycle_frames=SHOW_CYCLE_FRAMES)

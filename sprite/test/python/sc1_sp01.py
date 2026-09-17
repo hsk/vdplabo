@@ -18,16 +18,11 @@ PALETTEと背景色(R#7)はopenMSXで実測した値を使っており、
     python sc1_sp01.py --show          # pygameウィンドウで目視確認
     python sc1_sp01.py --update-expected # ../expected/sc1_sp01.webm を再生成
 """
-import sys
-
-from test_support import add_engine_path, expected_path_for, render_expected_frames, compare_to_expected, write_expected, main  # noqa: E402
+from test_support import add_engine_path, assert_matches_expected_video, render_and_write_expected, render_frame, main  # noqa: E402
 
 add_engine_path(__file__)
 
 from stage4 import V9918  # noqa: E402
-
-EXPECTED_PATH = expected_path_for(__file__, "sc1_sp01.webm")
-VIEW_SCALE = 4
 
 # sc1_sp01.asm の sprite_pattern_data と同じ8バイト
 SPRITE_PATTERN = [
@@ -66,26 +61,24 @@ def build_vdp() -> V9918:
     vdp.set_sprite(0, SPRITE_X, SPRITE_Y, SPRITE_PATTERN_NO, SPRITE_COLOR)
     vdp.set_sprite_mag(True)
     # sc1_sp01.asm はVDPレジスタ7(背景色)を書き換えていないため、
-    # BIOSのデフォルト値(BAKCLR=4, 青)がそのまま背景色として残る。
-    vdp.set_backdrop_color(4)
+    # BIOSのデフォルト値(BAKCLR=4, 青)がそのまま背景色として残る
+    # (V9918のコンストラクタ自体がBIOSデフォルトの4で初期化するので、
+    # ここで明示的に呼ぶ必要は無い)。
     return vdp
 
 
 class Simulation:
     """静止画なので状態遷移は無いが、他のテストファイルと同じ
     step()インターフェースに合わせてある(test_support.render_expected_frames
-    がSimulationクラスだけ渡せば動くようにするため)。
+    がSimulationクラスだけ渡せば動くようにするため)。surfaceの作成・renderの
+    呼び出しは呼び出し側(test_support)の責務なのでここでは持たない。
     """
 
     def __init__(self):
-        import pygame
-
-        pygame.init()
         self.vdp = build_vdp()
-        self.surface = pygame.Surface((V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT))
 
     def step(self):
-        self.vdp.render_sprite1(self.surface)
+        pass
 
 
 def test_magnify_is_applied():
@@ -98,33 +91,25 @@ BACKGROUND_COLOR = V9918.PALETTE[4]
 
 
 def test_background_is_blue():
-    sim = Simulation()
-    sim.step()
-    assert sim.surface.get_at((0, 0))[:3] == BACKGROUND_COLOR
+    assert render_frame(Simulation).vdp.get_at(0, 0) == BACKGROUND_COLOR
 
 
 def test_sprite_top_left_corner_is_background():
     # 拡大時、画面上のオフセット(0,0)はパターン(row0,col0)に対応する。
     # 1行目のパターン 00111100 の左端(col0)はビットが立っていない
-    sim = Simulation()
-    sim.step()
-    assert sim.surface.get_at((SPRITE_X, DISPLAY_Y))[:3] == BACKGROUND_COLOR
+    assert render_frame(Simulation).vdp.get_at(SPRITE_X, DISPLAY_Y) == BACKGROUND_COLOR
 
 
 def test_sprite_center_is_white():
     # 拡大時、画面上のオフセット(4,4)はパターン(row2,col2)に対応する。
     # 3行目のパターン 11111111 は全ビット立っている
-    sim = Simulation()
-    sim.step()
-    assert sim.surface.get_at((SPRITE_X + 4, DISPLAY_Y + 4))[:3] == (255, 255, 255)
+    assert render_frame(Simulation).vdp.get_at(SPRITE_X + 4, DISPLAY_Y + 4) == (255, 255, 255)
 
 
 def test_sprite_top_edge_is_white():
     # 拡大時、画面上のオフセット(4,0)はパターン(row0,col2)に対応する。
     # 1行目のパターン 00111100 の3ビット目(0-indexed col=2)はビットが立っている
-    sim = Simulation()
-    sim.step()
-    assert sim.surface.get_at((SPRITE_X + 4, DISPLAY_Y))[:3] == (255, 255, 255)
+    assert render_frame(Simulation).vdp.get_at(SPRITE_X + 4, DISPLAY_Y) == (255, 255, 255)
 
 
 def test_magnified_footprint_extends_beyond_8x8():
@@ -132,45 +117,16 @@ def test_magnified_footprint_extends_beyond_8x8():
     # 非拡大の8x8スプライトなら絶対に届かない範囲で、
     # パターン(row6,col6)=01111110のcol6ビットが立っているため白になるはず。
     # これが白ければ拡大が実際に効いている証拠になる。
-    sim = Simulation()
-    sim.step()
-    assert sim.surface.get_at((SPRITE_X + 12, DISPLAY_Y + 12))[:3] == (255, 255, 255)
+    assert render_frame(Simulation).vdp.get_at(SPRITE_X + 12, DISPLAY_Y + 12) == (255, 255, 255)
 
 
 def test_matches_expected_video():
-    actual = render_expected_frames(Simulation, count=1)
-    compare_to_expected(actual, EXPECTED_PATH, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE, __file__)
-
-
-def show_window():
-    """目視確認用: pygameウィンドウにスプライトを表示する。"""
-    import pygame
-
-    sim = Simulation()
-    sim.step()
-    scale = 3
-    window = pygame.display.set_mode(
-        (V9918.SCREEN_WIDTH * scale, V9918.SCREEN_HEIGHT * scale)
-    )
-    pygame.display.set_caption("sc1_sp01")
-    clock = pygame.time.Clock()
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-        scaled = pygame.transform.scale(
-            sim.surface, (V9918.SCREEN_WIDTH * scale, V9918.SCREEN_HEIGHT * scale)
-        )
-        window.blit(scaled, (0, 0))
-        pygame.display.flip()
-        clock.tick(60)
+    assert_matches_expected_video(Simulation, 1, __file__)
 
 
 def update_expected():
-    frames = render_expected_frames(Simulation, count=1)
-    write_expected(frames, EXPECTED_PATH, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
+    render_and_write_expected(Simulation, 1, __file__)
 
 
 if __name__ == "__main__":
-    main(globals(), show_window, update_expected)
+    main(globals(), Simulation, "sc1_sp01", update_expected=update_expected)

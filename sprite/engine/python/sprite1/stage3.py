@@ -57,7 +57,7 @@ class V9918:
         self.vram[addr + 1] = x & 0xff
         self.vram[addr + 2] = pattern & 0xff
         self.vram[addr + 3] = (color | (128 if ec else 0)) & 0xff
-    def render_sprite1(self, surface):
+    def render(self, surface):
         surface.fill((0, 0, 0))
         self.sprite_5s = False
         self.sprite_5s_index = 0
@@ -127,7 +127,7 @@ if __name__ == "__main__":
                     pygame.quit()
                     sys.exit()
             rom.run(frame)
-            vdp.render_sprite1(screen)
+            vdp.render(screen)
             # Debug output for sprite status
             if vdp.sprite_collision:
                 print("SPRITE COLLISION")

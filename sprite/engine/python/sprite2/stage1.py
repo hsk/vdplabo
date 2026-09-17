@@ -62,7 +62,7 @@ class V9938:
         self.sprites[no]["y"] = y
         self.sprites[no]["pattern"] = pattern
         self.sprites[no]["color"] = color
-    def render_sprite2(self, surface):
+    def render(self, surface):
         surface.fill((0, 0, 0))
         draw_buffer = bytearray(self.SCREEN_WIDTH*self.SCREEN_HEIGHT)
         for i,spr in enumerate(self.sprites):
@@ -128,7 +128,7 @@ if __name__ == "__main__":
                     pygame.quit()
                     sys.exit()
             rom.run(frame)
-            vdp.render_sprite2(screen)
+            vdp.render(screen)
             scaled = pygame.transform.scale(
                 screen,
                 (vdp.SCREEN_WIDTH * SCALE, vdp.SCREEN_HEIGHT * SCALE)

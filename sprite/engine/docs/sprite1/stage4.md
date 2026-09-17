@@ -15,7 +15,7 @@
 - [x] R#7 (Text color/Back drop color register, 背景色のみ。テキスト色は未対応)
 
 `set_backdrop_color()`/`get_backdrop_color()`でR#7の下位4bit(BD3-BD0)を
-設定/取得し、render_sprite1がその色で背景を塗りつぶす。デフォルトは0
+設定/取得し、renderがその色で背景を塗りつぶす。デフォルトは0
 (黒)で、実機のBIOSデフォルト(BAKCLR=4, 青)を再現したい場合は
 呼び出し側で明示的に`set_backdrop_color(4)`する必要がある
 (asmがR#7を書き換えていなければBIOSデフォルトが残る、という前提を

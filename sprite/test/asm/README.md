@@ -49,13 +49,21 @@ make capture ROM=sc1_sp05 # ../expected/sc1_sp05_openmsx.webm を作る
 - `-control stdio`で自動操作すると、実際にはウィンドウを作らずヘッドレス的に
   動いてしまい、`screenshot`/`record`が"成功した"と返してきても中身が
   不定(ノイズ)になったりファイルが作られなかったりする(実測して確認済み)。
-  そのため`-script`に渡すTclファイルの中で`after <ms> ...`を使い、
+  そのため`-script`に渡すTclファイルの中で`after time <seconds> ...`を使い、
   録画の開始・終了・終了処理をあらかじめスケジュールする方式にしている
   (これなら通常起動と同じくウィンドウが正しく作られる)
 - Tclの`after`の遅延コマンドは`{...}`で1引数にまとめず、スペース区切りの
-  複数引数のまま渡すこと。`after 3000 record start foo.avi`はOKだが
-  `after 3000 {record start foo.avi}`は`invalid command name`になる
+  複数引数のまま渡すこと。`after time 3 record start foo.avi`はOKだが
+  `after time 3 {record start foo.avi}`は`invalid command name`になる
   (原因不明、要注意点として記録)
+- `after <ms>`(サブコマンド無しの素のフォーム)は`after realtime`と同じ
+  ホストの壁時計(実時間)ベースで、ホストの負荷次第でどのエミュレート
+  フレームで発火するかにブレが出る(../input/README.mdのキー入力精度の
+  問題で実測して発覚)。`after time <seconds>`はエミュレート側のCPU/VDP
+  サイクルに同期したクロック(Scheduler)を使うため、ホストの状況に関係なく
+  完全に決定論的に発火する(openMSXソース src/events/AfterCommand.cc で確認)。
+  録画開始・停止の秒数程度ならブレていても実害は無かったが、フレーム単位で
+  タイミングを合わせたい用途(キー入力など)では`after time`必須
 - 起動直後はC-BIOSのロゴ画面が表示され、実際のROMの`init`が始まるまでの
   時間は実時間待ちだと実行ごとにばらつきがあった(5秒でもまだロゴのまま
   のことがあった)。そこで実時間の`--boot-wait`ではなく、**ROMヘッダの

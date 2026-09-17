@@ -43,7 +43,7 @@ class V9918:
         self.set_5s(False)
         self.set_5s_index(31)
         self.set_collision(False)
-        self.set_backdrop_color(0)
+        self.set_backdrop_color(4)  # BIOSデフォルト(BAKCLR=4, 青)
     def set_backdrop_color(self, value):
         self.reg[7] = (self.reg[7] & 0xF0) | (value & 0x0F)
     def get_backdrop_color(self):
@@ -101,12 +101,17 @@ class V9918:
         self.vram[addr + 1] = x & 0xff
         self.vram[addr + 2] = pattern & 0xff
         self.vram[addr + 3] = (color | (128 if ec else 0)) & 0xff
-    def render_sprite1(self, surface):
+    def render(self, surface):
+        self._surface = surface
         surface.fill(self.PALETTE[self.get_backdrop_color()])
         self.set_5s(False)
         self.set_5s_index(31)  # オーバーしなかった場合、実機では31(32枚全走査)になる
+        self.set_collision(False)  # 実機はSTATFL読み取りで毎フレームクリアされる(BIOSの割り込みハンドラが担う)
         for y in range(self.SCREEN_HEIGHT):
             self.render_line_sprites(surface, y)
+    def get_at(self, x, y):
+        """直前のrender()で使われたsurfaceの(x, y)のRGB値を返す。"""
+        return self._surface.get_at((x, y))[:3]
     def render_line_sprites(self, surface, y):
         sprites_on_line = 0
         draw_log = [0] * self.SCREEN_WIDTH
@@ -175,7 +180,7 @@ if __name__ == "__main__":
                     pygame.quit()
                     sys.exit()
             rom.run(frame)
-            vdp.render_sprite1(screen)
+            vdp.render(screen)
             # Debug output for sprite status
             if vdp.get_collision():
                 print("SPRITE COLLISION")

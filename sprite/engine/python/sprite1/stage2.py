@@ -60,7 +60,7 @@ class V9918:
         self.sprites[no]["y"] = y
         self.sprites[no]["pattern"] = pattern
         self.sprites[no]["color"] = color
-    def render_sprite1(self, surface):
+    def render(self, surface):
         surface.fill((0, 0, 0))
         self.sprite_5s = False
         self.sprite_5s_index = 0
@@ -125,7 +125,7 @@ if __name__ == "__main__":
                     pygame.quit()
                     sys.exit()
             rom.run(frame)
-            vdp.render_sprite1(screen)
+            vdp.render(screen)
             if vdp.sprite_collision:
                 print("SPRITE COLLISION")
             if vdp.sprite_5s:

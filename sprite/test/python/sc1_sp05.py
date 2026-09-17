@@ -38,16 +38,11 @@ PALETTEと背景色(R#7)はopenMSXで実測した値を使っており、
     python sc1_sp05.py --show          # pygameウィンドウで目視確認(ループ再生)
     python sc1_sp05.py --update-expected # ../expected/sc1_sp05.webm を再生成
 """
-import sys
-
-from test_support import add_engine_path, expected_path_for, render_expected_frames, compare_to_expected, write_expected, main  # noqa: E402
+from test_support import add_engine_path, assert_matches_expected_video, render_and_write_expected, main  # noqa: E402
 
 add_engine_path(__file__)
 
 from stage4 import V9918  # noqa: E402
-
-EXPECTED_PATH = expected_path_for(__file__, "sc1_sp05.webm")
-VIEW_SCALE = 4
 
 # sc1_sp05.asm の sprite_init と同じパラメータ
 TEST_COUNT = 9
@@ -76,8 +71,9 @@ def build_vdp() -> V9918:
     vdp.set_sprite_pattern(0, SPRITE_PATTERN)
     vdp.set_sprite_mag(True)
     # sc1_sp05.asm もVDPレジスタ7(背景色)を書き換えていないため、
-    # BIOSのデフォルト値(BAKCLR=4, 青)がそのまま背景色として残る。
-    vdp.set_backdrop_color(4)
+    # BIOSのデフォルト値(BAKCLR=4, 青)がそのまま背景色として残る
+    # (V9918のコンストラクタ自体がBIOSデフォルトの4で初期化するので、
+    # ここで明示的に呼ぶ必要は無い)。
     return vdp
 
 
@@ -104,31 +100,33 @@ class Simulation:
     (cold boot直後の最初の1回だけは前回が未定義になるが、そこは対象外)。
     start_c を変えることで、実機キャプチャがどの位相から始まっていても
     同じ位相から状態列を生成し直せる。
+
+    vdpと状態(c)だけを持つ状態機械で、surfaceの作成・vdp.render(surface)の
+    呼び出しは呼び出し側(test_support)の責務。そのためstep()は5S判定に
+    使う「前回のrender()結果」に依存する(呼び出し側は構築直後に一度
+    render()してから、step()のたびにrender()し直す想定)。
     """
 
     def __init__(self, start_c: int = C_MIN):
-        import pygame
-
-        pygame.init()
         self.vdp = build_vdp()
-        self.surface = pygame.Surface((V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT))
         self.c = start_c
 
-        # 定常状態の初期化: 1つ前の周(c-1)の配置を同じvdpで実際に描画しておき、
-        # そのときの5S状態を「前回の結果」として引き継がせる
-        # (実機は動き続けている1つのVDPなので、毎回作り直したりはしない)
+        # 定常状態の初期化: 1つ前の周(c-1)の配置をVRAMに書いておく。
+        # 呼び出し側がこの直後に一度render()することで、そのときの5S状態が
+        # 「前回の結果」として最初のstep()に引き継がれる
+        # (実機は動き続けている1つのVDPなので、毎回作り直したりはしない)。
         for i, y in enumerate(sprite_y_values(_prev_c(self.c))):
             self.vdp.set_sprite(i, X[i], y, 0, COLOR[i])
         self.vdp.set_sprite(DIAG_INDEX, 0, 208, 0, 0)
-        self.vdp.render_sprite1(self.surface)
 
     def step(self):
-        """次の状態を描画してself.surfaceを更新し、(overflow, index)を返す。
+        """次の状態のVRAM/レジスタを更新する(overflow, index)を返す。
 
-        overflow/indexは今描画したsurfaceに表示されている診断用スプライトの
-        値(＝1つ前の配置に対する判定結果)。
+        overflow/indexは直前のrender()で記録された5S状態(＝1つ前の配置に
+        対する判定結果)。呼び出し側はstep()のたびにrender()し直すことで、
+        次のstep()が今回の配置に対する5S状態を読めるようにする。
         """
-        # このvdpが「直前の描画」で記録した5S状態を読む(実機のSTATFL相当)
+        # このvdpが「直前のrender()」で記録した5S状態を読む(実機のSTATFL相当)
         overflow, index = self.vdp.get_5s(), self.vdp.get_5s_index()
         diag_color = DIAG_COLOR_OVERFLOW if overflow else DIAG_COLOR_NORMAL
 
@@ -136,7 +134,6 @@ class Simulation:
             self.vdp.set_sprite(i, X[i], y, 0, COLOR[i])
         self.vdp.set_sprite(DIAG_INDEX, index, DIAG_Y, DIAG_PATTERN, diag_color)
 
-        self.vdp.render_sprite1(self.surface)  # 今回の配置の5S状態が新しく記録される
         self.c = _next_c(self.c)
         return overflow, index
 
@@ -159,48 +156,15 @@ def test_matches_expected_video():
     # ピクセル単位で完全一致するか比較する。スプライトの位置・色・
     # 背景色・スプライトオーバー時の診断表示(赤/白と番号)まで、
     # 見た目に関わる部分をまとめて検証する本命のテスト。
-    actual = render_expected_frames(Simulation, count=STATE_COUNT, wait_frames=WAIT_FRAMES, start_c=C_MIN)
-    compare_to_expected(actual, EXPECTED_PATH, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE, __file__)
-
-
-def show_window():
-    """目視確認用: pygameウィンドウでループ再生する。"""
-    import pygame
-
-    sim = Simulation(C_MIN)
-    scale = 3
-    window = pygame.display.set_mode(
-        (V9918.SCREEN_WIDTH * scale, V9918.SCREEN_HEIGHT * scale)
-    )
-    pygame.display.set_caption("sc1_sp05")
-    clock = pygame.time.Clock()
-
-    frame = 0
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-
-        # wait_5frame と同じく、WAIT_FRAMES(5)フレームに1回だけ状態を更新する。
-        # 描画とタイマー自体は実機と同じ60FPSのまま回す。
-        if frame % WAIT_FRAMES == 0:
-            sim.step()
-
-        scaled = pygame.transform.scale(
-            sim.surface, (V9918.SCREEN_WIDTH * scale, V9918.SCREEN_HEIGHT * scale)
-        )
-        window.blit(scaled, (0, 0))
-        pygame.display.flip()
-        clock.tick(60)
-
-        frame += 1
+    assert_matches_expected_video(Simulation, STATE_COUNT, __file__, wait_frames=WAIT_FRAMES, start_c=C_MIN)
 
 
 def update_expected():
-    frames = render_expected_frames(Simulation, count=STATE_COUNT, wait_frames=WAIT_FRAMES, start_c=C_MIN)
-    write_expected(frames, EXPECTED_PATH, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
+    render_and_write_expected(Simulation, STATE_COUNT, __file__, wait_frames=WAIT_FRAMES, start_c=C_MIN)
 
 
 if __name__ == "__main__":
-    main(globals(), show_window, update_expected)
+    # --show は60FPSで描画するが、wait_5frameと同じくstep()はWAIT_FRAMES
+    # フレームに1回だけ呼ぶ(test_support.show_windowのwait_frames)。
+    main(globals(), Simulation, "sc1_sp05", update_expected=update_expected,
+         wait_frames=WAIT_FRAMES, start_c=C_MIN)

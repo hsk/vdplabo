@@ -60,8 +60,9 @@ class V9918:
         self.sprites[no]["y"] = y
         self.sprites[no]["pattern"] = pattern
         self.sprites[no]["color"] = color
-    def render_sprite1(self, surface):
-        surface.fill((0, 0, 0))
+    def render(self, surface):
+        self._surface = surface
+        surface.fill(self.PALETTE[4])  # BIOSデフォルト(BAKCLR=4, 青)。stage1は背景色レジスタ未対応。
         for spr in reversed(self.sprites):
             color = self.PALETTE[spr["color"]]
             blocks = [(0, 0, spr["pattern"])]
@@ -93,6 +94,9 @@ class V9918:
                                 y = spr["y"] + by + py
                                 if 0 <= x < self.SCREEN_WIDTH and 0 <= y < self.SCREEN_HEIGHT:
                                     surface.set_at((x, y), color)
+    def get_at(self, x, y):
+        """直前のrender()で使われたsurfaceの(x, y)のRGB値を返す。"""
+        return self._surface.get_at((x, y))[:3]
 if __name__ == "__main__":
     vdp = V9918()
     def machine(rom):
@@ -112,7 +116,7 @@ if __name__ == "__main__":
                     pygame.quit()
                     sys.exit()
             rom.run(frame)
-            vdp.render_sprite1(screen)
+            vdp.render(screen)
             scaled = pygame.transform.scale(
                 screen,
                 (vdp.SCREEN_WIDTH * SCALE, vdp.SCREEN_HEIGHT * SCALE)
