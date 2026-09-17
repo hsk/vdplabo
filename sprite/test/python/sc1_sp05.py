@@ -68,7 +68,9 @@ DIAG_COLOR_NORMAL = 15    # 白
 # FILVRM でパターン0の8バイトを255で埋める = 無地の8x8正方形
 SPRITE_PATTERN = [0b11111111] * 8
 
-FRAME_COUNT = PERIOD  # ちょうど1周期分
+WAIT_FRAMES = 5  # wait_5frame と同じ: 1つの配置が画面に留まるVSYNC数
+STATE_COUNT = PERIOD  # ちょうど1周期分の状態数(c=-8..8)
+FRAME_COUNT = STATE_COUNT * WAIT_FRAMES
 
 
 def build_vdp() -> V9918:
@@ -105,7 +107,10 @@ def evaluate_overflow(y_values):
     return vdp.get_5s(), vdp.get_5s_index()
 
 
-def render_frames(count: int = FRAME_COUNT):
+def render_frames(state_count: int = STATE_COUNT):
+    """各状態を wait_5frame と同じく WAIT_FRAMES 回複製して、
+    実機の表示時間(1状態=5 VSYNC)に合わせたフレーム列を返す。
+    """
     import pygame
 
     pygame.init()
@@ -115,7 +120,7 @@ def render_frames(count: int = FRAME_COUNT):
 
     c = C_MIN
     prev_y_values = None
-    for _ in range(count):
+    for _ in range(state_count):
         y_values = sprite_y_values(c)
 
         if prev_y_values is None:
@@ -130,7 +135,8 @@ def render_frames(count: int = FRAME_COUNT):
         vdp.set_sprite(DIAG_INDEX, index, DIAG_Y, DIAG_PATTERN, diag_color)
 
         vdp.render_sprite1(surface)
-        frames.append(surface_to_rgb(surface))
+        frame = surface_to_rgb(surface)
+        frames.extend([frame] * WAIT_FRAMES)
 
         prev_y_values = y_values
         c += 1
@@ -139,10 +145,10 @@ def render_frames(count: int = FRAME_COUNT):
     return frames
 
 
-def render_frames_scaled(count: int = FRAME_COUNT):
+def render_frames_scaled(state_count: int = STATE_COUNT):
     return [
         upscale_nearest(f, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
-        for f in render_frames(count)
+        for f in render_frames(state_count)
     ]
 
 
