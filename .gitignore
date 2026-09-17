@@ -8,3 +8,6 @@ __pycache__/
 *.rom
 *.log
 *.sym
+
+# 見た目確認用に拡大書き出ししたmp4 (video_golden.py で再生成できる)
+*_view.mp4
