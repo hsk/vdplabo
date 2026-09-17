@@ -11,3 +11,16 @@
   [../python/video_golden.py](../python/video_golden.py) を参照してください
 - 生成/更新は各テストファイルを `--update-golden` 付きで実行します
   (例: `python ../python/sc1_sp01.py --update-golden`)
+
+## `*_openmsx.webm`
+
+`scN_spNN.webm`(pythonエンジンで再現したgolden)とは別に、実際に
+openMSXでROMを実行して録画したものを`scN_spNN_openmsx.webm`として
+置くことがあります。撮り方は[../asm/capture_openmsx.py](../asm/capture_openmsx.py)
+を参照してください。
+
+pythonエンジン(stage4)はまだ背景色(R#7)を実装していないため、
+`_openmsx`版と見比べると背景色は一致しません(スプライト自体のピクセルは
+一致することを確認済み)。これは既知の制約で、
+[engine/docs/sprite1/stage4.md](../../engine/docs/sprite1/stage4.md)
+に記録されています。

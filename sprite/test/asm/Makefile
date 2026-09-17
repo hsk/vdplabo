@@ -13,5 +13,8 @@ sc5_%:
 #	../../../../../msxemu/msx2_sdl/app rom/$@.rom
 	openmsx -carta rom/$@.rom
 
+show-path:
+	openmsx -command "puts \"=== 録画データの保存先 ===\"; puts [file join $$env(OPENMSX_USER_DATA) \"captures\"]; quit"
+
 clean:
 	rm -rf rom/*.rom
