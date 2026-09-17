@@ -9,6 +9,19 @@ Phase 4: レジスタ駆動。未着手。
 - [ ] EC bit
 - [ ] SPD(スプライト非表示)ビット
 
+## sprite1/stage4との違い
+
+- sprite1(V9918)はSATアドレスをR#5だけで表せたが、sprite2(V9938)は
+  VRAMが最大128KBまで拡張されているため、R#5(下位)とR#11(上位)の
+  2レジスタでSATアドレスを構成する。
+- スプライトカラーテーブルの先頭アドレスは専用レジスタを持たず、
+  SATアドレスの値から自動的に(512を引いた値に)決まる。sprite1には
+  このテーブル自体が存在しない。
+- R#8のSPD(スプライト全体の非表示)ビットはsprite2固有(sprite1の
+  資料には記載がない)。
+- sprite size register(SI)・magnify register(MAG)・EC bit・
+  Status register 0(F/5S/C/5th sprite#)の構成自体はsprite1/stage4と同じ。
+
 ## 参考資料
 
 |      |   7 |   6 |   5 |   4 |   3 |   2 |   1 |   0 |                                                      |
