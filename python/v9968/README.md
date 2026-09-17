@@ -20,6 +20,13 @@
 - `docs/v9968_3cmd3lfmm.md` — LFMM(VRAM→VRAM フォント描画)コマンド
 - `docs/v9968_s16.md` — 拡張モード選択レジスタ
 
+## reference — openMSXフォーク実装との差分
+
+[buppu3/openMSX](https://github.com/buppu3/openMSX) の `v9968` ブランチは、本家openMSXにV9968対応を実装したフォーク。フォーク元からの差分を抽出して置いてある。
+
+- `reference/openmsx_v9968_commits.md` — 差分コミット一覧(47コミット、要約)
+- `reference/openmsx_v9968.diff` — 差分パッチ本体(master→v9968、31ファイル、+8759/-761)
+
 ## 注記
 
 同じ内容のドキュメントが直下の [docs/](docs) と [stage1/docs/](stage1/docs) の両方に重複して置かれている(中身は完全に同一)。将来的にはどちらかへ統一する必要がある。
