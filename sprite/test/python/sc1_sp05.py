@@ -102,47 +102,66 @@ def _prev_c(c: int) -> int:
     return C_MAX if c == C_MIN - 1 else c
 
 
-def render_frames(state_count: int = STATE_COUNT, start_c: int = C_MIN):
-    """各状態を wait_5frame と同じく WAIT_FRAMES 回複製して、
-    実機の表示時間(1状態=5 VSYNC)に合わせたフレーム列を返す。
+class Simulation:
+    """1つの永続的なvdpでc=start_cから順に状態を進めるコア処理。
+
+    render_frames() (goldenの生成/比較) と show_window() (目視確認) は
+    どちらもこのクラスを共有する。ロジックを2箇所に重複させると片方だけ
+    直し忘れる/ズレるということが起きるため、状態遷移はここ1箇所に
+    まとめている。ヘッドレスのテストからも同じ`step()`を呼べる。
 
     main_loop は無限ループでc=-8..8を繰り返すだけなので、周期内であれば
     どのcから始めても「1つ前の状態」は必ず (c-1) (wrap込み) になる
     (cold boot直後の最初の1回だけは前回が未定義になるが、そこは対象外)。
     start_c を変えることで、実機キャプチャがどの位相から始まっていても
-    同じ位相からフレーム列を生成し直せる。
+    同じ位相から状態列を生成し直せる。
     """
-    import pygame
 
-    pygame.init()
-    vdp = build_vdp()
-    surface = pygame.Surface((V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT))
-    frames = []
+    def __init__(self, start_c: int = C_MIN):
+        import pygame
 
-    c = start_c
+        pygame.init()
+        self.vdp = build_vdp()
+        self.surface = pygame.Surface((V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT))
+        self.c = start_c
 
-    # 定常状態の初期化: 1つ前の周(c-1)の配置を同じvdpで実際に描画しておき、
-    # そのときの5S状態を「前回の結果」として引き継がせる
-    # (実機は動き続けている1つのVDPなので、毎回作り直したりはしない)
-    for i, y in enumerate(sprite_y_values(_prev_c(c))):
-        vdp.set_sprite(i, X[i], y, 0, COLOR[i])
-    vdp.set_sprite(DIAG_INDEX, 0, 208, 0, 0)
-    vdp.render_sprite1(surface)
+        # 定常状態の初期化: 1つ前の周(c-1)の配置を同じvdpで実際に描画しておき、
+        # そのときの5S状態を「前回の結果」として引き継がせる
+        # (実機は動き続けている1つのVDPなので、毎回作り直したりはしない)
+        for i, y in enumerate(sprite_y_values(_prev_c(self.c))):
+            self.vdp.set_sprite(i, X[i], y, 0, COLOR[i])
+        self.vdp.set_sprite(DIAG_INDEX, 0, 208, 0, 0)
+        self.vdp.render_sprite1(self.surface)
 
-    for _ in range(state_count):
+    def step(self):
+        """次の状態を描画してself.surfaceを更新し、(overflow, index)を返す。
+
+        overflow/indexは今描画したsurfaceに表示されている診断用スプライトの
+        値(＝1つ前の配置に対する判定結果)。
+        """
         # このvdpが「直前の描画」で記録した5S状態を読む(実機のSTATFL相当)
-        overflow, index = vdp.get_5s(), vdp.get_5s_index()
+        overflow, index = self.vdp.get_5s(), self.vdp.get_5s_index()
         diag_color = DIAG_COLOR_OVERFLOW if overflow else DIAG_COLOR_NORMAL
 
-        for i, y in enumerate(sprite_y_values(c)):
-            vdp.set_sprite(i, X[i], y, 0, COLOR[i])
-        vdp.set_sprite(DIAG_INDEX, index, DIAG_Y, DIAG_PATTERN, diag_color)
+        for i, y in enumerate(sprite_y_values(self.c)):
+            self.vdp.set_sprite(i, X[i], y, 0, COLOR[i])
+        self.vdp.set_sprite(DIAG_INDEX, index, DIAG_Y, DIAG_PATTERN, diag_color)
 
-        vdp.render_sprite1(surface)  # ここで今回の配置の5S状態が新しく記録される
-        frame = surface_to_rgb(surface)
+        self.vdp.render_sprite1(self.surface)  # 今回の配置の5S状態が新しく記録される
+        self.c = _next_c(self.c)
+        return overflow, index
+
+
+def render_frames(state_count: int = STATE_COUNT, start_c: int = C_MIN):
+    """各状態を wait_5frame と同じく WAIT_FRAMES 回複製して、
+    実機の表示時間(1状態=5 VSYNC)に合わせたフレーム列を返す。
+    """
+    sim = Simulation(start_c)
+    frames = []
+    for _ in range(state_count):
+        sim.step()
+        frame = surface_to_rgb(sim.surface)
         frames.extend([frame] * WAIT_FRAMES)
-
-        c = _next_c(c)
     return frames
 
 
@@ -160,6 +179,27 @@ def test_c_cycles_through_17_values():
         values.append(c)
         c = _next_c(c)
     assert values == list(range(C_MIN, C_MAX + 1)) + [C_MIN]
+
+
+def test_overflow_triggers_when_all_sprites_align():
+    # c=0 だと9枚全部がY=100に重なるので、5枚目(index=4)でオーバーするはず。
+    # Simulationは render_frames/show_window と同じ「1つの永続的なvdp」を
+    # 使うので、golden不要で軽量にロジックだけ検証できる。
+    sim = Simulation(start_c=0)
+    sim.step()  # この戻り値は1つ前(c=8扱い)の結果なのでまだ使わない
+    overflow, index = sim.step()  # ここでc=0の結果が返る
+    assert overflow is True
+    assert index == 4
+
+
+def test_no_overflow_when_widely_spaced():
+    # c=8 なら間隔が広く、5枚以上が同一ラインに重なることはないはず。
+    # オーバーしなかった場合、実機では32枚全走査し終えた値=31になる。
+    sim = Simulation(start_c=8)
+    sim.step()
+    overflow, index = sim.step()
+    assert overflow is False
+    assert index == 31
 
 
 def test_matches_golden_video():
@@ -205,21 +245,13 @@ def show_window():
     """目視確認用: pygameウィンドウでループ再生する。"""
     import pygame
 
-    pygame.init()
-    vdp = build_vdp()
+    sim = Simulation(C_MIN)
     scale = 3
     window = pygame.display.set_mode(
         (V9918.SCREEN_WIDTH * scale, V9918.SCREEN_HEIGHT * scale)
     )
     pygame.display.set_caption("sc1_sp05")
-    screen = pygame.Surface((V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT))
     clock = pygame.time.Clock()
-
-    c = C_MIN
-    for i, y in enumerate(sprite_y_values(_prev_c(c))):
-        vdp.set_sprite(i, X[i], y, 0, COLOR[i])
-    vdp.set_sprite(DIAG_INDEX, 0, 208, 0, 0)
-    vdp.render_sprite1(screen)
 
     frame = 0
     while True:
@@ -231,18 +263,10 @@ def show_window():
         # wait_5frame と同じく、WAIT_FRAMES(5)フレームに1回だけ状態を更新する。
         # 描画とタイマー自体は実機と同じ60FPSのまま回す。
         if frame % WAIT_FRAMES == 0:
-            overflow, index = vdp.get_5s(), vdp.get_5s_index()
-            diag_color = DIAG_COLOR_OVERFLOW if overflow else DIAG_COLOR_NORMAL
-
-            for i, y in enumerate(sprite_y_values(c)):
-                vdp.set_sprite(i, X[i], y, 0, COLOR[i])
-            vdp.set_sprite(DIAG_INDEX, index, DIAG_Y, DIAG_PATTERN, diag_color)
-
-            vdp.render_sprite1(screen)
-            c = _next_c(c)
+            sim.step()
 
         scaled = pygame.transform.scale(
-            screen, (V9918.SCREEN_WIDTH * scale, V9918.SCREEN_HEIGHT * scale)
+            sim.surface, (V9918.SCREEN_WIDTH * scale, V9918.SCREEN_HEIGHT * scale)
         )
         window.blit(scaled, (0, 0))
         pygame.display.flip()
