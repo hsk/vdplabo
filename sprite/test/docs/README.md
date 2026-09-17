@@ -66,7 +66,7 @@ CBIOSさえあればディスクやBASICのROMがなくても動くので便利
 - [x] [sc1_sp05.asm](../asm/sc1_sp05.asm) スプライト個数制限チェック4個 ([解説](sc1_sp05.md))
   - 参考 [basic/sc1_sp03.bas](../basic/sc1_sp03.bas)
 - [x] [sc1_sp06.asm](../asm/sc1_sp06.asm) 一定速度落下アニメーション ([解説](sc1_sp06.md))
-  - 参考 [python/sc1_sp06.py](../python/sc1_sp06.py) エンジンで再現しmp4 goldenと比較するテスト
+  - 参考 [python/sc1_sp06.py](../python/sc1_sp06.py) エンジンで再現しwebm goldenと比較するテスト
 - [x] [sc1_sp07.asm](../asm/sc1_sp07.asm) 減速付きの落下アニメーション ([解説](sc1_sp07.md))
 - [x] [sc1_sp08.asm](../asm/sc1_sp08.asm) 大量のスプライトを飛び回らせる ([解説](sc1_sp08.md))
 - [x] [sc5_sp01.asm](../asm/sc5_sp01.asm) スプライト個数制限チェック8個 ([解説](sc5_sp01.md))

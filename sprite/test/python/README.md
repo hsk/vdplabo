@@ -25,22 +25,24 @@ pytestは使わず、`test_`で始まる関数をファイル自身が実行す�
   期待される座標のピクセル色を直接アサートします。ファイルが増えないので一番シンプルです。
 - **アニメーションのもの**(`sc1_sp06`など): 各フレームの期待値をコードで書き下すのは
   非現実的なので、[video_golden.py](video_golden.py) を使って録画した
-  ロスレスmp4([goldens/](goldens)以下, 例: `goldens/sc1_sp06.mp4`)と
+  ロスレスwebm([goldens/](goldens)以下, 例: `goldens/sc1_sp06.webm`)と
   実行結果をフレームごとにピクセル単位で比較します
-  - mp4は`libx264rgb`(RGBのままH.264符号化、色空間変換なし)でエンコードしているため
-    ビット完全一致で比較できます。通常のyuv420p/yuv444pは`-crf 0`でも
-    RGB→YUV変換の丸め誤差で一致しないため使っていません
+  - webmは`libvpx-vp9`の`gbrp`(RGBのままVP9符号化、色空間変換なし)でエンコードしているため
+    ビット完全一致で比較でき、輪郭のにじみ(クロマブリーディング)も出ません。
+    通常のyuv420p/yuv444pは`-lossless 1`でもRGB→YUV変換の丸め誤差でにじみが出て
+    ビット完全一致しないため使っていません(H.264の`libx264rgb`も試したが、
+    ブラウザでの再生互換性がVP9の`gbrp`=Profile 1より劣るためVP9を採用)
   - goldenは実寸(256x192)ではなく、ニアレストネイバーで**4倍**(1024x768)に
     拡大して保存します。ドット絵なので拡大しても劣化せずビット完全一致比較でき、
     かつそのまま見やすいファイルとしても使えるので、比較用と目視確認用を兼用しています
     (比較時はテスト側も同じ倍率でフレームを拡大してから突き合わせます)
-  - QuickTimeなど一部プレイヤーはこの4:4:4 RGBプロファイルをネイティブ再生できない
-    ことがあります(VLC/IINA/ffplayなら再生可)。目視確認は`--show`のpygameウィンドウでも可能です
+  - QuickTime Playerはwebm自体に非対応です(VLC/IINA/ffplayなら再生可)。
+    目視確認は`--show`のpygameウィンドウでも可能です
   - goldenの新規作成/更新は `python sc1_sp06.py --update-golden`
   - さらに拡大した別ファイルが欲しい場合(SNS投稿用など)は
-    `python video_golden.py goldens/sc1_sp06.mp4 --scale 5 --open` のように
-    goldenを入力にして`video_golden.py`単体でも拡大できます(`*_view.mp4`はgitignore対象)
-  - このmp4 golden方式は、将来openMSXや自作エミュレータが出力するフレーム列にも
+    `python video_golden.py goldens/sc1_sp06.webm --scale 5 --open` のように
+    goldenを入力にして`video_golden.py`単体でも拡大できます(`*_view.webm`はgitignore対象)
+  - このwebm golden方式は、将来openMSXや自作エミュレータが出力するフレーム列にも
     同じ`video_golden.py`をそのまま使い回すことを想定しています
 
 `ffmpeg`がPATH上にある必要があります(`brew install ffmpeg`)。

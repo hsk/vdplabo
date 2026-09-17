@@ -1,8 +1,12 @@
 """sc1_sp06.asm と同じ落下アニメーションをエンジンで再現し、
-録画したmp4(golden)とピクセル単位で比較するテスト。
+録画したwebm(golden)とピクセル単位で比較するテスト。
 
-goldenは実寸(256x192)ではなくニアレストネイバーで4倍(1024x768)に
-拡大して保存する。比較用データと目視確認用ファイルを兼用するため。
+goldenファイルは見やすさのためニアレストネイバーで4倍(1024x768)に
+拡大して保存するが、比較は実寸(256x192)に間引き戻してから行う
+(拡大は劣化しない操作なので、間引けば元のピクセル値と完全に一致する)。
+
+VP9の`gbrp`(RGBのまま符号化)を使っているのでビット完全一致かつ
+輪郭ににじみも出ない([video_golden.py](video_golden.py)参照)。
 
 参照:
 - ソース: ../asm/sc1_sp06.asm
@@ -11,7 +15,7 @@ goldenは実寸(256x192)ではなくニアレストネイバーで4倍(1024x768)
 実行方法:
     python sc1_sp06.py                 # 自動テストのみ実行
     python sc1_sp06.py --show          # pygameウィンドウで目視確認(等倍速ループ)
-    python sc1_sp06.py --update-golden # goldens/sc1_sp06.mp4 を再生成
+    python sc1_sp06.py --update-golden # goldens/sc1_sp06.webm を再生成
 """
 import pathlib
 import sys
@@ -21,9 +25,9 @@ if str(_ENGINE_SPRITE1) not in sys.path:
     sys.path.insert(0, str(_ENGINE_SPRITE1))
 
 from stage1 import V9918  # noqa: E402
-from video_golden import save_mp4, load_mp4, surface_to_rgb, upscale_nearest  # noqa: E402
+from video_golden import save_video, load_video, surface_to_rgb, upscale_nearest, downscale_nearest  # noqa: E402
 
-GOLDEN_PATH = pathlib.Path(__file__).resolve().parent / "goldens" / "sc1_sp06.mp4"
+GOLDEN_PATH = pathlib.Path(__file__).resolve().parent / "goldens" / "sc1_sp06.webm"
 
 # goldenは見やすさのため実寸(256x192)ではなくニアレストネイバーで
 # 4倍に拡大して保存する(ドット絵なので拡大しても劣化しない)
@@ -98,7 +102,7 @@ def render_frames(count: int = FRAME_COUNT):
 
 
 def render_frames_scaled(count: int = FRAME_COUNT):
-    """golden保存/比較用: 実寸フレームをVIEW_SCALE倍にしたもの。"""
+    """golden保存用: 実寸フレームをVIEW_SCALE倍にしたもの。"""
     return [
         upscale_nearest(f, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
         for f in render_frames(count)
@@ -123,8 +127,12 @@ def test_matches_golden_video():
             f"golden not found: {GOLDEN_PATH} "
             "(run `python sc1_sp06.py --update-golden` once to create it)"
         )
-    actual = render_frames_scaled()
-    expected = load_mp4(GOLDEN_PATH, GOLDEN_WIDTH, GOLDEN_HEIGHT)
+    actual = render_frames()  # 実寸(256x192)のまま比較する
+    golden_frames = load_video(GOLDEN_PATH, GOLDEN_WIDTH, GOLDEN_HEIGHT)
+    expected = [
+        downscale_nearest(f, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
+        for f in golden_frames
+    ]
     assert len(actual) == len(expected), (
         f"frame count mismatch: actual={len(actual)} expected={len(expected)}"
     )
@@ -148,7 +156,7 @@ def _run_all_tests():
 def update_golden():
     frames = render_frames_scaled()
     GOLDEN_PATH.parent.mkdir(parents=True, exist_ok=True)
-    save_mp4(frames, GOLDEN_WIDTH, GOLDEN_HEIGHT, GOLDEN_PATH)
+    save_video(frames, GOLDEN_WIDTH, GOLDEN_HEIGHT, GOLDEN_PATH)
     print(f"wrote {GOLDEN_PATH} ({GOLDEN_WIDTH}x{GOLDEN_HEIGHT}, {len(frames)} frames)")
 
 
