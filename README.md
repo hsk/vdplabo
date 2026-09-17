@@ -7,7 +7,7 @@
 
 ## ディレクトリ構成
 
-実装言語で大きく2つに分かれる。PC上でVDPの挙動をシミュレートするPython実装は [python/](python) に、実機/エミュレータ上でZ80アセンブリを動かして挙動を検証するものは [asm/](asm) にまとめている。[sprite/](sprite) はPython実装(`sprite/engine`)と実機検証(`sprite/hwtest`)が対になった研究テーマのため、この2分類の例外として、`python/`・`asm/`とは別名のサブディレクトリを持つ独自の構成にしている。
+実装言語で大きく2つに分かれる。PC上でVDPの挙動をシミュレートするPython実装は [python/](python) に、実機/エミュレータ上でZ80アセンブリを動かして挙動を検証するものは [asm/](asm) にまとめている。[sprite/](sprite) はPython実装(`sprite/engine`)と実機検証(`sprite/test`)が対になった研究テーマのため、この2分類の例外として、`python/`・`asm/`とは別名のサブディレクトリを持つ独自の構成にしている。
 
 ### python/ — VDPチップ別の段階的研究 (メイン)
 
@@ -35,7 +35,7 @@ R-Type風ゲーム制作の実験(敵/背景描画・キーフレームアニメ
 
 ### その他
 
-- [sprite/](sprite) — スプライトモード1/2について、Python参照実装(`sprite/engine`)と、実機で動くZ80アセンブリのサンプル(`sprite/hwtest`)を集めた実地検証コード。VDPエミュレータ実装時の期待値の参考にする。
+- [sprite/](sprite) — スプライトモード1/2について、Python参照実装(`sprite/engine`)と、実機で動くZ80アセンブリのサンプル(`sprite/test`)を集めた実地検証コード。VDPエミュレータ実装時の期待値の参考にする。
 
 ## TODO
 
