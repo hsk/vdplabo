@@ -227,6 +227,8 @@ def test_matches_golden_video():
 
 
 def _run_all_tests():
+    # test_ で始まる関数だけを拾って実行する。update_golden() はこの
+    # 命名規則に従っていないため、ここには含まれない(意図的)。
     ok = True
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):
@@ -240,6 +242,9 @@ def _run_all_tests():
 
 
 def update_golden():
+    # これはテストではなく、golden(正解データ)を書き換える専用の処理。
+    # test_ で始まらないので _run_all_tests では実行されず、
+    # コマンドラインで --update-golden を指定した時だけ呼ばれる。
     frames = render_frames_scaled()
     GOLDEN_PATH.parent.mkdir(parents=True, exist_ok=True)
     save_video(frames, GOLDEN_WIDTH, GOLDEN_HEIGHT, GOLDEN_PATH)
