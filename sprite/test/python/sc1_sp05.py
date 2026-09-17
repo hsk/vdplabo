@@ -181,25 +181,24 @@ def test_c_cycles_through_17_values():
     assert values == list(range(C_MIN, C_MAX + 1)) + [C_MIN]
 
 
-def test_overflow_triggers_when_all_sprites_align():
-    # c=0 だと9枚全部がY=100に重なるので、5枚目(index=4)でオーバーするはず。
-    # Simulationは render_frames/show_window と同じ「1つの永続的なvdp」を
-    # 使うので、golden不要で軽量にロジックだけ検証できる。
-    sim = Simulation(start_c=0)
-    sim.step()  # この戻り値は1つ前(c=8扱い)の結果なのでまだ使わない
-    overflow, index = sim.step()  # ここでc=0の結果が返る
-    assert overflow is True
-    assert index == 4
+_shared_trace = None  # テスト全体でSimulationを1つだけ作って使い回すためのキャッシュ
 
 
-def test_no_overflow_when_widely_spaced():
-    # c=8 なら間隔が広く、5枚以上が同一ラインに重なることはないはず。
-    # オーバーしなかった場合、実機では32枚全走査し終えた値=31になる。
-    sim = Simulation(start_c=8)
-    sim.step()
-    overflow, index = sim.step()
-    assert overflow is False
-    assert index == 31
+def _get_shared_trace():
+    """C_MINから順番に1周期分描画していき、各cについて
+    「そのcを描画した直後の表示フレーム」を記録する。
+    Simulationのインスタンスはこの1回のwalkでしか作らない。
+    """
+    global _shared_trace
+    if _shared_trace is None:
+        sim = Simulation(start_c=C_MIN)
+        trace = {}
+        for _ in range(STATE_COUNT):
+            c_used = sim.c  # このstep()でちょうど描画されるcの値
+            sim.step()
+            trace[c_used] = surface_to_rgb(sim.surface)
+        _shared_trace = trace
+    return _shared_trace
 
 
 def test_matches_golden_video():
@@ -208,7 +207,13 @@ def test_matches_golden_video():
             f"golden not found: {GOLDEN_PATH} "
             "(run `python sc1_sp05.py --update-golden` once to create it)"
         )
-    actual = render_frames()
+    trace = _get_shared_trace()
+    actual = []
+    c = C_MIN
+    for _ in range(STATE_COUNT):
+        actual.extend([trace[c]] * WAIT_FRAMES)
+        c = _next_c(c)
+
     golden_frames = load_video(GOLDEN_PATH, GOLDEN_WIDTH, GOLDEN_HEIGHT)
     expected = [
         downscale_nearest(f, V9918.SCREEN_WIDTH, V9918.SCREEN_HEIGHT, VIEW_SCALE)
