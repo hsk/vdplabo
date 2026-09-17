@@ -30,7 +30,7 @@ make clean  # rom/*.rom を削除
 エンジンで再現した [../expected/](../expected) のgoldenと見比べるためのツール。
 
 ```sh
-python capture_openmsx.py rom/sc1_sp01.rom --boot-wait 6.5 --duration 1
+python capture_openmsx.py rom/sc1_sp01.rom --settle 0.2 --duration 1
 ```
 
 - 録画には`record`コマンドを使う。openMSXの`record`はZMBV(Zip Motion Blocks
@@ -46,9 +46,21 @@ python capture_openmsx.py rom/sc1_sp01.rom --boot-wait 6.5 --duration 1
   複数引数のまま渡すこと。`after 3000 record start foo.avi`はOKだが
   `after 3000 {record start foo.avi}`は`invalid command name`になる
   (原因不明、要注意点として記録)
-- 起動直後はC-BIOSのロゴ画面が表示される。ロゴが終わって実際のROMの
-  `init`が始まるまでの時間は実行ごとにばらつきがあった(5秒でもまだ
-  ロゴのままのことがあった)。`--boot-wait`は余裕を持った値にすること
+- 起動直後はC-BIOSのロゴ画面が表示され、実際のROMの`init`が始まるまでの
+  時間は実時間待ちだと実行ごとにばらつきがあった(5秒でもまだロゴのまま
+  のことがあった)。そこで実時間の`--boot-wait`ではなく、**ROMヘッダの
+  `dw init`(オフセット2-3バイト)から`init`の実アドレスを直接計算し、
+  openMSXのデバッガでそのアドレスにブレークポイントを張って実行到達を
+  検出する**方式にした。これはエミュレート内部の時間に基づくため
+  完全に決定論的(複数回実行して寸分違わず同じフレームでヒットすることを
+  確認済み)。`--settle`はブレークポイント到達後、録画開始までの
+  待ち秒数(init自体の実行は一瞬なので短くて良い、デフォルト0.2秒)
+  - ブレークポイントのコールバック内で`puts`しても画面内コンソールにしか
+    出ずOSの標準出力には流れないので、結果を取り出したい場合はTclの
+    `open`/`puts`/`close`でファイルに直接書き込む必要がある(ハマりポイント)
+  - この方式はopenMSXのデバッガ機能に依存しているため、FPGA実機などの
+    HDMIキャプチャには使えない。そちらは映像の中身から同期点を検出する
+    別のアプローチが必要になる
 - 録画される画面は320x240で、可視領域256x192の周囲にボーダー(枠)が
   付いた状態。中央寄せと仮定して単純にクロップしている
   (`BORDER_X=32, BORDER_Y=24`)。この前提が崩れるケース(枠色が

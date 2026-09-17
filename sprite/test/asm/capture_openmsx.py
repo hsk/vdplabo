@@ -2,7 +2,7 @@
 生フレーム列に変換するツール。
 
 使い方:
-    python capture_openmsx.py rom/sc1_sp01.rom --boot-wait 5 --duration 1
+    python capture_openmsx.py rom/sc1_sp01.rom --settle 0.2 --duration 1
 
 仕組み:
 - openMSXは `-control stdio` で自動操作すると、実際にはウィンドウを
@@ -21,11 +21,26 @@
 - 録画される画面は320x240で、実際の可視領域256x192の周囲にボーダー
   (枠)が付いた状態。中央寄せと仮定して単純にクロップする
   (BORDER_X=32, BORDER_Y=24)。
+
+起動ロゴのスキップについて:
+- 以前は実時間の`--boot-wait`(何秒待つか)で決め打ちしていたが、
+  ホストの負荷次第でエミュレーション速度が実時間からズレるため、
+  同じ待ち秒数でもロゴが終わっていたり終わっていなかったりするブレがあった。
+- 今はROMヘッダの`dw init`(オフセット2-3バイト、リトルエンディアン)から
+  カートリッジの`init`アドレスを直接計算し、openMSXのデバッガで
+  そのアドレスにブレークポイントを張ることで「実行が本当にinitへ
+  到達した瞬間」を検出する。これはエミュレート内部の時間/フレーム数に
+  基づくため完全に決定論的(実測で複数回とも寸分違わず同じフレームで
+  ヒットすることを確認済み)。ブレークポイントヒットから`--settle`秒
+  (デフォルト0.2秒、init自体の実行は一瞬なので短くて良い)待ってから
+  録画を開始する
+- ブレークポイントのコールバック内で使う`puts`は画面内コンソールにしか
+  出力されずOSの標準出力には流れないため、ログを取りたい場合はTclの
+  `open`/`puts`/`close`でファイルに直接書き込む必要がある(ハマりポイント)
 """
 import argparse
 import pathlib
 import subprocess
-import sys
 import tempfile
 
 OPENMSX_WIDTH = 320
@@ -34,22 +49,35 @@ BORDER_X = (OPENMSX_WIDTH - 256) // 2  # 32
 BORDER_Y = (OPENMSX_HEIGHT - 192) // 2  # 24
 
 
-def run_capture(rom: pathlib.Path, out_avi: pathlib.Path, boot_wait: float, duration: float, timeout: float = None):
-    """openMSXでromを実行し、boot_wait秒後からduration秒間を録画してout_aviに保存する。"""
-    boot_ms = int(boot_wait * 1000)
-    stop_ms = int((boot_wait + duration) * 1000)
+def compute_init_address(rom: pathlib.Path) -> int:
+    """ROMヘッダ(org 4000h, db "AB", dw init, ...)からinitの実アドレスを求める。"""
+    data = rom.read_bytes()
+    if data[0:2] != b"AB":
+        raise ValueError(f"{rom}: カートリッジヘッダ('AB')が見つからない")
+    return data[2] | (data[3] << 8)
+
+
+def run_capture(rom: pathlib.Path, out_avi: pathlib.Path, settle: float = 0.2, duration: float = 1.0,
+                 timeout: float = None):
+    """openMSXでromを実行し、initに到達してからsettle秒後~duration秒間を録画してout_aviに保存する。"""
+    init_addr = compute_init_address(rom)
+    settle_ms = int(settle * 1000)
+    stop_ms = settle_ms + int(duration * 1000)
     exit_ms = stop_ms + 500
     script = (
-        f"after {boot_ms} record start {out_avi}\n"
-        f"after {stop_ms} record stop\n"
-        f"after {exit_ms} exit\n"
+        f"debug set_bp {init_addr:#06x} 1 {{\n"
+        f"    after {settle_ms} record start {out_avi}\n"
+        f"    after {stop_ms} record stop\n"
+        f"    after {exit_ms} exit\n"
+        f"}}\n"
+        f"after 20000 exit\n"  # initに到達しなかった場合の保険
     )
     with tempfile.NamedTemporaryFile("w", suffix=".tcl", delete=False) as f:
         f.write(script)
         script_path = f.name
 
     if timeout is None:
-        timeout = boot_wait + duration + 10
+        timeout = settle + duration + 25  # 保険の20秒 + 余裕
 
     proc = subprocess.run(
         ["openmsx", "-cart", str(rom), "-script", script_path],
@@ -57,7 +85,8 @@ def run_capture(rom: pathlib.Path, out_avi: pathlib.Path, boot_wait: float, dura
     )
     if not out_avi.exists():
         raise RuntimeError(
-            f"openmsx did not produce {out_avi}\nstdout={proc.stdout}\nstderr={proc.stderr}"
+            f"openmsx did not produce {out_avi} (initアドレス0x{init_addr:04X}に到達しなかった可能性)\n"
+            f"stdout={proc.stdout}\nstderr={proc.stderr}"
         )
 
 
@@ -82,13 +111,13 @@ def avi_to_cropped_rgb_frames(avi_path: pathlib.Path):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("rom", type=pathlib.Path)
     parser.add_argument("-o", "--output", type=pathlib.Path, default=None, help="出力先avi (省略時は<rom>.avi)")
-    parser.add_argument("--boot-wait", type=float, default=5.0, help="録画開始までの待ち秒数(起動ロゴをスキップする分)")
+    parser.add_argument("--settle", type=float, default=0.2, help="initブレークポイント到達後、録画開始までの待ち秒数")
     parser.add_argument("--duration", type=float, default=1.0, help="録画する秒数")
     args = parser.parse_args()
 
     output = args.output or args.rom.with_suffix(".avi")
-    run_capture(args.rom, output, args.boot_wait, args.duration)
+    run_capture(args.rom, output, args.settle, args.duration)
     print(f"wrote {output}")
