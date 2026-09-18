@@ -16,8 +16,13 @@ engine/python/sprite1/stage4.py (レジスタ駆動・スキャンライン描�
    VDPの判定結果)を読み、10個目の診断用スプライトへ反映
 3. sprites_update でRAM→VRAMへ転送(ここで初めて画面に反映される)
 
-つまり診断用スプライトは常に「1つ前の周で表示されていた配置」に対する
-判定結果を表示する1周分の遅延がある。このテストも同じ遅延をモデル化する。
+ソースコード上は「1つ前の周で表示されていた配置」に対する判定結果に
+見えるが、実機キャプチャと突き合わせた実測では2周分(DIAG_STATUS_LAG)の
+遅延があった。stage4エンジンのrender()はrender()を呼ぶたびに全スプライトを
+スキャンして5Sフラグを再計算する(実機のSTATFLのように「読むまで保持」
+される訳ではない)ため、素朴に「直前のrender()の結果」を使うだけでは
+実機の遅延を1周分再現しきれない。このテストはこの実測値(2周)を
+モデル化する。
 
 main_loop は無限ループでc=-8..8(17状態)を繰り返すだけなので、定常状態
 (cold boot直後の最初の1回を除く)では「1つ前の状態」は必ず周期内の
@@ -38,6 +43,8 @@ PALETTEと背景色(R#7)はopenMSXで実測した値を使っており、
     python sc1_sp05.py --show          # pygameウィンドウで目視確認(ループ再生)
     python sc1_sp05.py --update-expected # ../expected/sc1_sp05.webm を再生成
 """
+from collections import deque
+
 from test_support import add_engine_path, assert_matches_expected_video, render_and_write_expected, main  # noqa: E402
 
 add_engine_path(__file__)
@@ -64,6 +71,16 @@ SPRITE_PATTERN = [0b11111111] * 8
 
 WAIT_FRAMES = 5  # wait_5frame と同じ: 1つの配置が画面に留まるVSYNC数
 STATE_COUNT = PERIOD  # ちょうど1周期分の状態数(c=-8..8)
+
+# 診断スプライトの5S判定(get_5s/get_5s_index)は、設計上「1つ前の周に
+# 表示されていた配置」を反映する(main_loopのコメント参照)はずだったが、
+# 実機キャプチャと突き合わせたところ、実際には2周分遅れて反映されていた
+# (実測値。c=-2で赤くなるのはPython版の予測ではframe26だが、実機は
+# frame31。ちょうどWAIT_FRAMES分=1周分だけ実機の方が遅い)。
+# stage4.render()はrender()呼び出しごとに全32スプライトを毎回スキャンして
+# 5Sフラグを再計算する(実機のSTATFLのように「読むまで保持」ではない)ため、
+# 単純に「直前のrender()の結果を使う」だけでは1周分足りなかったと考えられる。
+DIAG_STATUS_LAG = 2
 
 
 def build_vdp() -> V9918:
@@ -111,23 +128,30 @@ class Simulation:
         self.vdp = build_vdp()
         self.c = start_c
 
-        # 定常状態の初期化: 1つ前の周(c-1)の配置をVRAMに書いておく。
+        # 定常状態の初期化: DIAG_STATUS_LAG周前の配置をVRAMに書いておく。
         # 呼び出し側がこの直後に一度render()することで、そのときの5S状態が
-        # 「前回の結果」として最初のstep()に引き継がれる
+        # 「DIAG_STATUS_LAG周前の結果」の1つとして最初のstep()に引き継がれる
         # (実機は動き続けている1つのVDPなので、毎回作り直したりはしない)。
-        for i, y in enumerate(sprite_y_values(_prev_c(self.c))):
+        prev_c = self.c
+        for _ in range(DIAG_STATUS_LAG):
+            prev_c = _prev_c(prev_c)
+        for i, y in enumerate(sprite_y_values(prev_c)):
             self.vdp.set_sprite(i, X[i], y, 0, COLOR[i])
         self.vdp.set_sprite(DIAG_INDEX, 0, 208, 0, 0)
+        # DIAG_STATUS_LAG回分の初期履歴("overflowなし")を積んでおく
+        self._5s_log = deque([(False, 31)] * DIAG_STATUS_LAG, maxlen=DIAG_STATUS_LAG)
 
     def step(self):
         """次の状態のVRAM/レジスタを更新する(overflow, index)を返す。
 
-        overflow/indexは直前のrender()で記録された5S状態(＝1つ前の配置に
-        対する判定結果)。呼び出し側はstep()のたびにrender()し直すことで、
-        次のstep()が今回の配置に対する5S状態を読めるようにする。
+        overflow/indexはDIAG_STATUS_LAG周前のrender()で記録された5S状態。
+        呼び出し側はstep()のたびにrender()し直すことで、そのつどの5S状態が
+        ログに積まれ、DIAG_STATUS_LAG周後のstep()で読めるようになる。
         """
-        # このvdpが「直前のrender()」で記録した5S状態を読む(実機のSTATFL相当)
-        overflow, index = self.vdp.get_5s(), self.vdp.get_5s_index()
+        # このvdpが直近のrender()で記録した5S状態をログに積み、
+        # DIAG_STATUS_LAG周前の値を取り出す(実機のSTATFL相当)
+        self._5s_log.append((self.vdp.get_5s(), self.vdp.get_5s_index()))
+        overflow, index = self._5s_log[0]
         diag_color = DIAG_COLOR_OVERFLOW if overflow else DIAG_COLOR_NORMAL
 
         for i, y in enumerate(sprite_y_values(self.c)):
@@ -150,17 +174,26 @@ def test_c_cycles_through_17_values():
     assert values == list(range(C_MIN, C_MAX + 1)) + [C_MIN]
 
 
+# ../asm/Makefileの`make capture_sc1_sp05`/`cap_test_sc1_sp05`は
+# --settle 0.166667(10フレーム)でopenMSXの録画を開始するよう固定している
+# (デフォルトの0.2秒=12フレームだと、このROMのWAIT_FRAMES=5周期の境界と
+# 噛み合わず、録画開始が状態の途中になってしまうため。実測でc=C_MIN+1の
+# 状態(2番目の周回)の開始ちょうどに来ることを確認済み)。start_cはその
+# 録画開始位置に合わせている。
+START_C = C_MIN + 1
+
+
 def test_matches_expected_video():
     # 1周期分(17状態 x WAIT_FRAMES)を実際にSimulationで描画し、
     # 保存済みのexpected動画(../expected/sc1_sp05.webm)とフレームごとに
     # ピクセル単位で完全一致するか比較する。スプライトの位置・色・
     # 背景色・スプライトオーバー時の診断表示(赤/白と番号)まで、
     # 見た目に関わる部分をまとめて検証する本命のテスト。
-    assert_matches_expected_video(Simulation, STATE_COUNT, __file__, wait_frames=WAIT_FRAMES, start_c=C_MIN)
+    assert_matches_expected_video(Simulation, STATE_COUNT, __file__, wait_frames=WAIT_FRAMES, start_c=START_C)
 
 
 def update_expected():
-    render_and_write_expected(Simulation, STATE_COUNT, __file__, wait_frames=WAIT_FRAMES, start_c=C_MIN)
+    render_and_write_expected(Simulation, STATE_COUNT, __file__, wait_frames=WAIT_FRAMES, start_c=START_C)
 
 
 if __name__ == "__main__":

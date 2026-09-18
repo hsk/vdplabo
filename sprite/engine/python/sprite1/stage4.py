@@ -131,7 +131,15 @@ class V9918:
             size = 16 if self.get_sprite_size16() else 8
             mag = 2 if self.get_sprite_mag() else 1
             size = size * mag
-            if not (spr_y <= y < spr_y + size): continue
+            # Y座標は8bitの円環カウンタなので、spr_y+sizeが256を超える場合
+            # (実機で「画面上端からせり出してくる」負のYを表現する時)は
+            # spr_y-256側でもマッチしうる(例: Y=-13は生バイト243, +1で244に
+            # なり、244+16=260>256なので244-256=-12側と比較すると
+            # y=0..3が該当し、上端3〜4行だけ見えるのが正しい)。
+            top = spr_y
+            if not (spr_y <= y < spr_y + size):
+                top = spr_y - 256
+                if not (top <= y < top + size): continue
             sprites_on_line += 1
             if sprites_on_line > 4:
                 if not self.get_5s():
@@ -140,7 +148,7 @@ class V9918:
                     self.set_5s(True)
                     self.set_5s_index(i)
                 return
-            py = y - spr_y
+            py = y - top
             if mag == 2: py >>= 1
             if self.get_sprite_size16():
                 spr_ptn = spr_ptn & 0xFC

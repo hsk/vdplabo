@@ -19,6 +19,13 @@ from video_expected import load_video, save_video, downscale_nearest, upscale_ne
 SCREEN_WIDTH = 256
 SCREEN_HEIGHT = 192
 
+# ../asm/capture_openmsx.pyのデフォルト録画秒数(DEFAULT_DURATION=2.0) x FPS(60)。
+# sc1_sp01のような静止画面テストはcount=1(1フレームのみ)で足りるが、それだと
+# 実機キャプチャ(最低この秒数だけ録画される。../asm/README.md参照)とフレーム数が
+# 合わず../asm/compare_webm.pyでの比較ができない。そのためrender_expected_frames
+# 側で末尾フレームを複製してこの長さまで底上げする。
+MIN_EXPECTED_FRAMES = 120
+
 
 def add_engine_path(caller_file: str) -> None:
     """呼び出し元ファイルから見た engine/python/sprite1 をsys.pathに追加する。"""
@@ -73,12 +80,19 @@ def render_expected_frames(simulation_cls, count: int, wait_frames: int = 1, **k
 
     surfaceの作成・vdp.render(surface)の呼び出しはここが行う
     (Simulation側の責務ではない)。
+
+    結果がMIN_EXPECTED_FRAMES未満なら、末尾フレームの複製ではなく
+    step()を継続してそこまで底上げする(sc1_sp05/06のような周期的な
+    アニメーションでは、実機は録画中も動き続けるため、最後のフレームで
+    静止させると実機キャプチャと食い違う。sc1_sp01のような静止画面
+    テストではstep()が状態を変えないので、結果的に複製と同じになる)。
     """
     sim = simulation_cls(**kwargs)
     surface = make_surface(SCREEN_WIDTH, SCREEN_HEIGHT)
     sim.vdp.render(surface)  # 初期状態をrenderしておく(前回状態への依存に対応)
     frames = []
-    for _ in range(count):
+    target = max(count * wait_frames, MIN_EXPECTED_FRAMES)
+    while len(frames) < target:
         sim.step()
         sim.vdp.render(surface)
         frames.extend([surface_to_rgb(surface)] * wait_frames)

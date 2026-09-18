@@ -118,16 +118,22 @@ def build_frame_tick_script(events: list, exit_frame: int) -> str:
 
 
 def run_capture(rom: pathlib.Path, out_avi: pathlib.Path, settle: float = 0.2, duration: float = 1.0,
-                 timeout: float = None, input_path: pathlib.Path = None):
+                 timeout: float = None, input_path: pathlib.Path = None,
+                 settle_frames: int = None, duration_frames: int = None):
     """openMSXでromを実行し、initに到達してからsettle秒後~duration秒間を録画してout_aviに保存する。
 
     input_pathを指定した場合(省略時はdefault_input_path(rom)が存在すればそれを使う)、
     そのinput script(../input/README.md参照)のキー入力を録画開始(settle_frames)を
     起点にスケジュールする。
+
+    settle_frames/duration_framesを指定すると、settle/duration(秒)からの
+    round()計算を経由せずフレーム数をそのまま使う(秒指定だと期待値の
+    フレーム数にちょうど合わせるのに半端な小数(例: 139/60秒)が必要になり
+    扱いにくいため)。
     """
     init_addr = compute_init_address(rom)
-    settle_frames = round(settle * FPS)
-    stop_frames = settle_frames + round(duration * FPS)
+    settle_frames = round(settle * FPS) if settle_frames is None else settle_frames
+    stop_frames = settle_frames + (round(duration * FPS) if duration_frames is None else duration_frames)
     exit_frames = stop_frames + 30  # 0.5秒相当の余裕
 
     if input_path is None:
@@ -206,17 +212,20 @@ def avi_to_cropped_rgb_frames(avi_path: pathlib.Path):
 
 
 def capture_to_webm(rom: pathlib.Path, out_webm: pathlib.Path, settle: float = 0.2, duration: float = 2.0,
-                     scale: int = 4, input_path: pathlib.Path = None) -> int:
+                     scale: int = 4, input_path: pathlib.Path = None,
+                     settle_frames: int = None, duration_frames: int = None) -> int:
     """録画(avi)→クロップ→ニアレストネイバー拡大→webm保存までを一括で行う。
 
     中間のaviは一時ファイルとして扱い、最後に破棄する。戻り値はフレーム数。
+    settle_frames/duration_framesはrun_capture参照。
     """
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "python"))
     from video_expected import save_video, upscale_nearest  # noqa: E402
 
     with tempfile.TemporaryDirectory() as tmp:
         avi_path = pathlib.Path(tmp) / "capture.avi"
-        run_capture(rom, avi_path, settle, duration, input_path=input_path)
+        run_capture(rom, avi_path, settle, duration, input_path=input_path,
+                    settle_frames=settle_frames, duration_frames=duration_frames)
         frames = avi_to_cropped_rgb_frames(avi_path)
 
     scaled = [upscale_nearest(f, 256, 192, scale) for f in frames]
@@ -232,9 +241,14 @@ if __name__ == "__main__":
                          help="出力先。拡張子が.webmならクロップ+4倍拡大まで済ませたwebmを直接書き出す"
                               "(省略時は<rom>.avi、生のaviのまま保存)")
     parser.add_argument("--settle", type=float, default=0.2, help="initブレークポイント到達後、録画開始までの待ち秒数")
+    parser.add_argument("--settle-frames", type=int, default=None,
+                         help="--settleをフレーム数で指定する版(指定時は--settleより優先)。"
+                              "期待値のフレーム数にちょうど合わせたい時に使う")
     parser.add_argument("--duration", type=float, default=None,
                          help=f"録画する秒数(省略時は{DEFAULT_DURATION}。ただしinput scriptを使う場合は"
                               "そのスクリプトを最後まで再生しきれる秒数を自動計算する)")
+    parser.add_argument("--duration-frames", type=int, default=None,
+                         help="--durationをフレーム数で指定する版(指定時は--duration/自動計算より優先)")
     parser.add_argument("--scale", type=int, default=4, help="webm出力時のニアレストネイバー拡大倍率")
     parser.add_argument("--input", type=pathlib.Path, default=None,
                          help="キー入力スクリプト(JSON、../input/README.md参照)。"
@@ -253,8 +267,10 @@ if __name__ == "__main__":
 
     output = args.output or args.rom.with_suffix(".avi")
     if output.suffix == ".webm":
-        n = capture_to_webm(args.rom, output, args.settle, duration, args.scale, input_path=input_path)
+        n = capture_to_webm(args.rom, output, args.settle, duration, args.scale, input_path=input_path,
+                             settle_frames=args.settle_frames, duration_frames=args.duration_frames)
         print(f"wrote {output} ({n} frames)")
     else:
-        run_capture(args.rom, output, args.settle, duration, input_path=input_path)
+        run_capture(args.rom, output, args.settle, duration, input_path=input_path,
+                     settle_frames=args.settle_frames, duration_frames=args.duration_frames)
         print(f"wrote {output}")

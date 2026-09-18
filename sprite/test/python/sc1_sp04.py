@@ -34,9 +34,11 @@ sc1_sp04.asmの現在の構造:
 詳しい実測ログは../asm/README.mdを参照。
 
 キー入力は ../input/sc1_sp04.json (LEFT/RIGHTキーでsprite1・sprite2の
-両方と重なるように往復させるスクリプト)を使い、
-../expected/sc1_sp04_openmsx.webm(実機キャプチャ)とフレームごとに
-ピクセル単位で比較する。
+両方と重なるように往復させるスクリプト)を使い、同じinput scriptで
+Python版エンジン自身が生成した../expected/sc1_sp04.webmとフレームごとに
+ピクセル単位で比較する(他のsc1_sp*テストと同じ回帰テスト方式)。
+実機キャプチャ../expected/sc1_sp04_openmsx.webmは自動テストには
+組み込まず、実機との突き合わせ用の参考ファイルとして別途保持する。
 
 実行方法:
     python sc1_sp04.py                  # 自動テストのみ実行
@@ -194,7 +196,7 @@ def _expected_frame_count(expected_path: pathlib.Path) -> int:
 
 
 def test_matches_expected_video():
-    expected_path = expected_path_for(__file__, "sc1_sp04_openmsx.webm")
+    expected_path = expected_path_for(__file__, "sc1_sp04.webm")
     frame_count = _expected_frame_count(expected_path)
     actual = render_with_input(Simulation, INPUT_SCRIPT_PATH, frame_count)
     compare_to_expected(actual, expected_path, SCREEN_WIDTH, SCREEN_HEIGHT, VIEW_SCALE, __file__)
@@ -203,8 +205,9 @@ def test_matches_expected_video():
 def update_expected() -> None:
     """../input/sc1_sp04.json(INPUT_SCRIPT_PATH)で駆動したPython版エンジンの
     描画結果を../expected/sc1_sp04.webmとして書き出す(openMSX実機は使わない。
-    実機キャプチャの../expected/sc1_sp04_openmsx.webmとは別ファイルで、
-    test_matches_expected_video()の比較対象は変わらずそちらのまま)。
+    test_matches_expected_video()もこのファイルと比較する。実機キャプチャの
+    ../expected/sc1_sp04_openmsx.webmは自動テストには使わず、実機との
+    突き合わせ用に別途手動で見比べる参考ファイルとして残す)。
 
     フレーム数はinput scriptの最後のイベントから
     duration_seconds()(../input/input_script.py)と同じ余裕を持たせて決める。

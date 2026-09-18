@@ -21,7 +21,7 @@ from test_support import add_engine_path, assert_matches_expected_video, render_
 
 add_engine_path(__file__)
 
-from stage1 import V9918  # noqa: E402
+from stage4 import V9918  # noqa: E402
 
 # sc1_sp06.asm の sprite_pattern_data と同じ (T, Y, P, E)
 SPRITE_PATTERNS = [
@@ -39,13 +39,22 @@ STEP = 4
 START_DELAY = [0, 12, 24, 36]
 COLOR = 5
 
-FRAME_COUNT = 90  # 全スプライトが静止するまで(c=62)を収める
+# sc1_sp06.asmのinitはsprite_init直後にwait_1sec(60VSYNC)で1秒静止してから
+# main_loopに入る(録画開始タイミングの半端なズレではなく、ROM側の意図的な
+# 演出なので、キャプチャ側で読み飛ばすのではなくこちらで同じ待ちを
+# モデル化する)。実機キャプチャと突き合わせた実測では、このLEAD_IN_FRAMES
+# 分だけ静止させた後の最初のstep()でスプライトが画面上に現れ始める
+# (frame51目。単純にwait_1secの60を使うと合わず、49が実測値)。
+LEAD_IN_FRAMES = 49
+FRAME_COUNT = LEAD_IN_FRAMES + 90  # 静止区間 + 全スプライトが静止するまで(c=62)を収める
 
 
 def build_vdp() -> V9918:
     vdp = V9918()
     for i, pattern in enumerate(SPRITE_PATTERNS):
         vdp.set_sprite_pattern(i, pattern)
+    # sc1_sp06.asmのscreen_initもsprite_mag(拡大)ビットを立てている
+    vdp.set_sprite_mag(True)
     return vdp
 
 
@@ -68,9 +77,11 @@ class SpriteState:
 
 
 class Simulation:
-    """1回目のstep()は「sprite_init直後、まだ動く前」の初期状態を用意し、
-    2回目以降はsprites_moveと同じロジックでYを1フレーム進める。
-    (実機のframe_counterはstep()の呼び出し回数-1に対応する)
+    """最初のLEAD_IN_FRAMES+1回のstep()は「sprite_init直後、wait_1secで
+    静止している間」の初期状態を保ち、それ以降はsprites_moveと同じ
+    ロジックでYを1フレーム進める。
+    (実機のframe_counterはLEAD_IN_FRAMES分を引いたstep()の呼び出し回数-1
+    に対応する)
 
     vdpと状態だけを持つ状態機械で、surfaceの作成・vdp.render(surface)の
     呼び出しは呼び出し側(test_support)の責務。
@@ -82,8 +93,8 @@ class Simulation:
         self._counter = 0
 
     def step(self):
-        if self._counter > 0:
-            self.state.advance(self._counter)
+        if self._counter > LEAD_IN_FRAMES:
+            self.state.advance(self._counter - LEAD_IN_FRAMES)
         for i in range(4):
             self.vdp.set_sprite(i, START_X[i], self.state.y[i], i, COLOR)
         self._counter += 1

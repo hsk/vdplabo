@@ -25,12 +25,42 @@ sc5_%:
 show-path:
 	openmsx -command "puts \"=== 録画データの保存先 ===\"; puts [file join $$env(OPENMSX_USER_DATA) \"captures\"]; quit"
 
-# openMSXで実際にROMを実行し、録画結果を ../expected/<ROM>_openmsx.webm に保存する。
-# 例: make capture ROM=sc1_sp05 (先に make sc1_sp05 でrom/sc1_sp05.romを作っておくこと)
-# ターゲット名を rom名の接頭辞(sc1_/sc5_)に合わせるとsc1_%/sc5_%パターンと
-# 衝突してビルドの方が実行されてしまうため、変数指定方式にしている。
 capture:
 	python3 capture_openmsx.py rom/$(ROM).rom -o ../expected/$(ROM)_openmsx.webm
+
+# SETTLE/DURATIONはフレーム数(--settle-frames/--duration-frames)で指定する。
+# 秒指定だと期待値のフレーム数にちょうど合わせるのに半端な小数(例: 139/60秒)
+# が必要になり扱いにくいため。
+# - SETTLE: 周期的なアニメーションのROM(sc1_sp05など)は、デフォルトの
+#   settle(0.2秒=12フレーム)だと録画開始がROM側のフレーム周期の境界と
+#   噛み合わず、期待値と1フレーム単位の半端なズレが出ることがある。
+#   境界に合う値を実測して各テストファイル側(start_cなど)と揃えて使う
+#   (../python/sc1_sp05.py参照)。
+# - DURATION: デフォルトの録画時間(2秒=120フレーム)より長いexpected
+#   (sc1_sp06など、起動直後に長い静止区間がありFRAME_COUNTが120を超える
+#   ROM)を録る時に使う。expected側(../python/<ROM>.py)のフレーム数以上を
+#   指定すること。
+capture_%:
+	python3 capture_openmsx.py rom/$*.rom -o ../expected/$*_openmsx.webm $(if $(SETTLE),--settle-frames $(SETTLE),) $(if $(DURATION),--duration-frames $(DURATION),)
+
+test_%:
+	python3 compare_webm.py ../expected/$*.webm ../expected/$*_openmsx.webm
+
+cap_test_%:
+	python3 capture_openmsx.py rom/$*.rom -o ../expected/$*_openmsx.webm $(if $(SETTLE),--settle-frames $(SETTLE),) $(if $(DURATION),--duration-frames $(DURATION),)
+	python3 compare_webm.py ../expected/$*.webm ../expected/$*_openmsx.webm
+
+# sc1_sp05はWAIT_FRAMES=5周期の境界に合わせるため、settleを10フレームに
+# 固定してキャプチャする(実測値。理由は上のコメントと../python/sc1_sp05.py
+# のstart_cコメント参照)。ターゲット固有変数として指定するだけで、
+# レシピ自体は上のcap_test_%パターンがそのまま使われる。
+cap_test_sc1_sp05 capture_sc1_sp05: SETTLE = 10
+
+# sc1_sp06はLEAD_IN_FRAMES(wait_1sec相当)込みでexpectedが139フレーム
+# (../python/sc1_sp06.pyのFRAME_COUNT)あるため、デフォルトの2秒(120フレーム)
+# では足りない。compare_webm.pyはフレーム数の厳密一致を要求するので、
+# ちょうど139フレームを指定する。
+cap_test_sc1_sp06 capture_sc1_sp06: DURATION = 139
 
 clean:
 	rm -rf rom/*.rom
