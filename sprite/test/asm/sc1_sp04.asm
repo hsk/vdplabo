@@ -2,28 +2,45 @@
 WRTVDP equ 00047h
 LDIRVM equ 0005Ch
 CHGMOD equ 0005Fh
-GTSTCK equ 000D5h
+SNSMAT equ 00141h
 RDVDP  equ 0013Eh
-KILBUF equ 00156h
 SPRATR equ 01B00h
 SPRPAT equ 03800h
 RG1SAV equ 0F3E0h       ; VDPレジスタ退避アドレス
 STATFL equ 0F3E7h
-JIFFY  equ 0FC9Eh
+HTIMI  equ 0FD9Fh
     org 04000h
 rom_header:
     db "AB"
     dw init
     dw 0, 0, 0, 0, 0
-player_x equ 0C000h
+player_x  equ 0C000h
+vint      equ 0C010h
+htimi_old equ 0C011h
 init:
     call screen_init
+    call install_htimi_hook
     call pattern_name_table_init
     call sprite_attribute_table_init
     call player_init
     jp main
+
+install_htimi_hook:
+    di
+    ld hl, HTIMI
+    ld de, htimi_old
+    ld bc, 5
+    ldir
+    ld hl, htimi_rep
+    ld de, HTIMI
+    ld bc, 3
+    ldir
+    ei
+    ret
+htimi_rep:
+    jp htimi_new
+
 main:
-    call player_move
     call wait_vsync
     call player_draw
     call player_collision
@@ -62,29 +79,30 @@ player_init:
     inc hl
     ld (hl), 15
     ret
+
+htimi_new:
 player_move:
     ; キー入力
-    call KILBUF
-    xor a
-    call GTSTCK
+    ld a, 8
+    call SNSMAT
     ; 右チェック
     ld hl, player_x
-    cp 2
-    jr c, end_right     ; 2未満なら飛ぶ
-    cp 5
-    jr nc, end_right    ; 5以上なら飛ぶ
-        inc (hl)        ; 2,3,4 でinc
+    bit 7, a
+    jr nz, end_right
+        inc (hl)         ; bit7が1
     end_right:
     ; 左チェック
-    cp 6
-    jr c, end_left
-    cp 9
-    jr nc, end_left
-        dec (hl) ; 6,7,8でdec
+    bit 4, a
+    jr nz, end_left
+        dec (hl)         ; bit4が1
     end_left:
+    ; vintフラグ
+    ld hl, vint
+    inc (hl)
+    jp htimi_old
+
 wait_vsync:
-    ; VSYNC
-	ld hl, JIFFY
+	ld hl, vint
 	ld a, (hl)
     vsync:
         cp (hl)
@@ -102,8 +120,6 @@ player_collision:
     ld a,(STATFL)
     and 000100000b
     jr nz, collision
-        ld a, (JIFFY)
-        and 0fh
         ld hl, player_x + 2
         ld (hl), 15
         ret

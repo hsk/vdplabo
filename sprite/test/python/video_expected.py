@@ -41,13 +41,21 @@ def surface_to_rgb(surface) -> bytes:
 
 
 def save_video(frames_rgb: List[bytes], width: int, height: int, path: Path, fps: int = FPS) -> None:
-    """RGB24の生フレーム列を可逆webm(VP9, gbrp)として保存する。"""
+    """RGB24の生フレーム列を可逆webm(VP9, gbrp)として保存する。
+
+    `-threads 1 -row-mt 0`で常にシングルスレッドエンコードに固定している。
+    libvpx-vp9はスレッド数を変えるとエンコード結果のバイト列が変わる
+    (実測して確認済み。デコードした画素は変わらないので可逆性自体には
+    影響しないが、バイト列が変わるとファイルの単純なバイナリ比較による
+    高速な一致判定ができなくなる)。
+    """
     raw = b"".join(frames_rgb)
     _run_ffmpeg(
         [
             "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{width}x{height}", "-r", str(fps),
             "-i", "-",
             "-c:v", "libvpx-vp9", "-lossless", "1", "-pix_fmt", "gbrp",
+            "-threads", "1", "-row-mt", "0",
             str(path),
         ],
         input_bytes=raw,
