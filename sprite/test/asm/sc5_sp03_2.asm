@@ -81,7 +81,7 @@ sprite_init:
     ld (hl), 0
     inc hl
     djnz sprite_init
-    ld (hl), 208
+    ld (hl), 216
     ld c, -8        ; Y増分
 main:
     ld a, 100       ; y座標

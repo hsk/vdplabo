@@ -6,8 +6,8 @@ CHGMOD equ 0005Fh
 GTSTCK equ 000D5h
 KILBUF equ 00156h
 BIGFIL equ 0016BH       ; VRAM を一定値で埋める (A=値, BC=サイズ, HL=VRAM宛先)
-SPRATR equ 07600h       ; アトリビュートテーブル
-SPRPAT equ 07800h       ; ジェネレータテーブル
+SPRATR equ 01E00h       ; アトリビュートテーブル
+SPRPAT equ 03800h       ; ジェネレータテーブル
 RG1SAV equ 0F3E0h       ; VDPレジスタ退避アドレス
 STATFL equ 0F3E7h
 JIFFY  equ 0FC9Eh
@@ -20,8 +20,8 @@ rom_header:
     dw init
     dw 0, 0, 0, 0, 0
 init:
-    ; screen 5
-    ld a, 5
+    ; screen 4
+    ld a, 4
     call CHGMOD
     ; 背景色の設定
     ld b, 5         ; 設定データ (5 = Light blue)
@@ -91,8 +91,6 @@ init:
     ld de, SPRATR
     ld bc, 4 * 11
     call LDIRVM
-    call vsync
-    call vsync
 
     ld c, -8    ; Y増分
 main:

@@ -11,6 +11,9 @@ class V9938:
     # (実測: CHGMODでSCREEN5にした時点でR#9のLNビットが立ち、可視領域が
     # 192ではなく212ラインになる。openMSXキャプチャとの比較で、192決め打ち
     # だと上下10ラインずつが誤って枠(border)側に分類されることが判明した)。
+    # SCREEN4(GRAPHIC3)はR#9のLNビットが立たず192ライン表示のまま
+    # (openMSXキャプチャのボーダー幅の実測で確認済み)なので、V9938(screen_height=192)
+    # のようにコンストラクタ引数で切り替える。デフォルトは従来通り212。
     SCREEN_HEIGHT = 212
     # openMSXの生キャプチャ(枠込み)に合わせたキャンバス全体のサイズ。
     # 可視領域(SCREEN_WIDTH/HEIGHT)はこの中央に配置される。
@@ -40,12 +43,21 @@ class V9938:
         (187, 187, 187),   # 14 Gray
         (255, 255, 255),   # 15 White
     ]
-    def __init__(self):
+    def __init__(self, screen_height=SCREEN_HEIGHT):
+        self.SCREEN_HEIGHT = screen_height
+        self.BORDER_Y = (self.CANVAS_HEIGHT - screen_height) // 2
         self.vram = bytearray(self.VRAM_SIZE)
         self.reg = bytearray(12)
         self.stat = bytearray(1)
         self.set_sprite_pattern_table(0x1b00)
         self.set_sprite_attribute_table(0x3800)
+        # 実機(V9938)は未使用スプライトのY座標に終端マーカー216を置いて
+        # スキャンを打ち切る(sprite2.md参照)。set_sprite()を呼んでいない
+        # エントリはVRAM初期値0のままだと「Y=0の実在スプライト」として
+        # 誤って第9スプライト判定に数えられてしまうため、コンストラクタで
+        # 全エントリを216(終端)にしておく。
+        for i in range(self.SPRITE_COUNT):
+            self.vram[self.get_sprite_attribute_table() + i * 4] = 216
         self.set_sprite_mag(False)
         self.set_sprite_size16(False)
         self.set_spd(False)
@@ -163,11 +175,22 @@ class V9938:
         active = surface.subsurface((self.BORDER_X, self.BORDER_Y, self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
         active.fill(self.PALETTE[self.get_screen_background_color()])
         self.set_5s(False)
-        self.set_5s_index(0)
+        # 実機の仕様: 第5(9)スプライトフラグが立っていない時、5S#には
+        # 終端マーカー(216)自身のインデックスが入る(216が無い=32個全部
+        # 使われている場合は31。openMSXキャプチャとの実測で確認済み)。
+        # オーバーフローが一度も起きなければこの値のまま、起きれば
+        # render_line_sprites側がset_5s(True)と一緒に上書きする。
+        self.set_5s_index(self._last_sprite_index())
         self.set_collision(False)
         if self.get_spd(): return
         for y in range(self.SCREEN_HEIGHT):
             self.render_line_sprites(active, y)
+    def _last_sprite_index(self):
+        attr_addr = self.get_sprite_attribute_table()
+        for i in range(self.SPRITE_COUNT):
+            if self.vram[attr_addr + i * 4] == 216:
+                return i
+        return 31
     def get_at(self, x, y):
         """直前のrender()で使われたsurfaceの、可視領域ローカル座標(x, y)のRGB値を返す。"""
         return self._surface.get_at((x + self.BORDER_X, y + self.BORDER_Y))[:3]
@@ -185,7 +208,7 @@ class V9938:
             spr_ptn = self.vram[attr_addr + 2]
             color_byte = self.vram[attr_addr + 3]
             attr_addr += 4
-            if spr_y == 208: return
+            if spr_y == 216: return  # V9938スプライトモード2の終端マーカー(sprite2.md参照。MSX1のモード1は208)
             spr_y = (spr_y + 1) & 255
             if color_byte & 0x80: x -= 32
             if not (spr_y <= y < spr_y + size): continue

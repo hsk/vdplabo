@@ -102,16 +102,16 @@ class Simulation:
         for i, y in enumerate(sprite_y_values(prev_c)):
             self.vdp.set_sprite(i, X[i], y, 0, COLOR[i])
         self.vdp.set_sprite(DIAG_INDEX, 0, 208, 0, 0)
-        self._5s_log = deque([(False, 31)] * DIAG_STATUS_LAG, maxlen=DIAG_STATUS_LAG)
+        self.vdp.set_sprite(DIAG_INDEX+1, 0, 216, 0, 0)
 
     def step(self):
-        self._5s_log.append((self.vdp.get_5s(), self.vdp.get_5s_index()))
-        overflow, index = self._5s_log[0]
+        overflow, index = (self.vdp.get_5s(), self.vdp.get_5s_index())
         diag_color = DIAG_COLOR_OVERFLOW if overflow else DIAG_COLOR_NORMAL
 
         for i, y in enumerate(sprite_y_values(self.c)):
             self.vdp.set_sprite(i, X[i], y, 0, COLOR[i])
-        self.vdp.set_sprite(DIAG_INDEX, index, DIAG_Y, DIAG_PATTERN, diag_color)
+        self.vdp.set_sprite(DIAG_INDEX, index, DIAG_Y, 0, 0)
+        self.vdp.set_sprite_color(DIAG_INDEX, [diag_color] * 8)
 
         self.c = _next_c(self.c)
         return overflow, index

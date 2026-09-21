@@ -1,12 +1,13 @@
 TARGETs = sc1_sp01 sc1_sp02 sc1_sp03 sc1_sp04 sc1_sp05 sc1_sp06 sc1_sp07 sc1_sp08 \
-          sc5_hra sc5_sp01 sc5_sp02 sc5_sp03 sc5_sp03_2 sc5_sp04 sc5_sp05 sc5_sp06 sc5_sp07 \
+		  sc4_sp01 sc4_sp02 \
+          sc5_sp01 sc5_sp02 sc5_sp03 sc5_sp03_2 sc5_sp04 sc5_sp05 sc5_sp06 sc5_sp07 \
           sc7_sp01
 
 all: $(TARGETs)
 
-sc1_%:
-	z88dk-z80asm -b $@.asm -orom/$@.rom
-	rm -rf *.o
+#sc1_%:
+#	z88dk-z80asm -b $@.asm -orom/$@.rom
+#	rm -rf *.o
 
 # パレット実測用の診断ROM。実行はせずビルドのみ(実行はprobe_palette.pyから)。
 probe_palette:
@@ -17,7 +18,7 @@ probe_palette:
 probe-palette: probe_palette
 	python3 probe_palette.py rom/probe_palette.rom
 
-sc5_% sc7_%:
+sc%:
 	echo "ビルド中: $@"
 	java -jar glass-0.6.jar $@.asm rom/$@.rom
 #	../../../../../msxemu/msx2_sdl/app rom/$@.rom
@@ -67,7 +68,12 @@ captest_sc1_sp05 capture_sc1_sp05: SETTLE = 10
 # ちょうど139フレームを指定する。
 captest_sc1_sp06 capture_sc1_sp06: DURATION = 139
 
-captest_sc5_sp01 capture_sc5_sp01: SETTLE = 13
+# sc4(SCREEN4/192ライン)はsc5(SCREEN5/212ライン)とVBLANKタイミングが異なるため、
+# ROM側の5フレーム周期境界に噛み合うSETTLE値も違う(実測: sc5=13, sc4=15)。
+captest_sc5_sp01 capture_sc5_sp01 cap_sc5_sp01: SETTLE = 15
+captest_sc5_sp02 capture_sc5_sp02 cap_sc5_sp02: SETTLE = 15
+captest_sc4_sp01 capture_sc4_sp01 cap_sc4_sp01: SETTLE = 15
+captest_sc4_sp02 capture_sc4_sp02 cap_sc4_sp02: SETTLE = 15
 
 captest_sc7_sp01 capture_sc7_sp01: SETTLE = 40
 

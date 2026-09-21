@@ -54,7 +54,7 @@ DIAG_STATUS_LAG = 2
 
 
 def build_vdp() -> V9938:
-    vdp = V9938()
+    vdp = V9938(screen_height=192)
     vdp.set_sprite_pattern(0, SPRITE_PATTERN)
     # sc5_sp02.asm は CHGMOD実行直後にWRTVDPでVDPレジスタ7を直接
     # 4(濃い青)から5(薄い青)へ書き換えている。このタイミングでのR#7書き換えは

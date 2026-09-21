@@ -122,7 +122,7 @@ sprites_update:
     ; sprites 更新
     ld de, SPRATR
     ld hl, sprites
-    ld bc, 4 * 10
+    ld bc, 4 * 11
     call LDIRVM
     ret
 

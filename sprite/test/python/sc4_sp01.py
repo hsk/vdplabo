@@ -1,17 +1,17 @@
-"""sc5_sp02.asm と同じ「9個のスプライトのY座標を-8〜8で増減させ、
-1ラインの表示制限(9個目以降がオーバーフロー)に達すると10個目の診断用スプライトの
-X座標にオーバーフローしたスプライト番号が設定され、色も赤くなる」デモを
-V9938スプライトモード2(stage4)で再現し、expected動画と比較するテスト。
+"""sc4_sp01.asm と同じ「9個のスプライトのY座標を-8〜8で増減させ、
+1ラインの表示制限(9個目以降がオーバーフロー)に達すると10個目の診断用スプライトが
+赤くなる」デモをV9938スプライトモード2(stage4)で再現し、
+expected動画と比較するテスト。
 
 engine/python/sprite2/stage4.py (V9938 Sprite Mode 2 スキャンライン描画)を使う。
 
 参照:
-- ソース: ../asm/sc5_sp02.asm
+- ソース: ../asm/sc4_sp01.asm
 
 実行方法:
-    python sc5_sp02.py                 # 自動テストのみ実行
-    python sc5_sp02.py --show          # pygameウィンドウで目視確認(ループ再生)
-    python sc5_sp02.py --update-expected # ../expected/sc5_sp02.webm を再生成
+    python sc4_sp01.py                 # 自動テストのみ実行
+    python sc4_sp01.py --show          # pygameウィンドウで目視確認(ループ再生)
+    python sc4_sp01.py --update-expected # ../expected/sc4_sp01.webm を再生成
 """
 from collections import deque
 import pathlib
@@ -30,9 +30,12 @@ add_sprite2_engine_path(__file__)
 
 from stage4 import V9938  # noqa: E402
 
-# sc5_sp02.asm の sprite_init と同じパラメータ
+# sc4_sp01.asm の sprite_init と同じパラメータ
 TEST_COUNT = 9
 X = [100 + i * 16 for i in range(TEST_COUNT)]
+# sc4_sp01.asm では color_init で d=1..10 の色が各スプライトに設定される (SATの4バイト目の色)
+# color_init: ld a, d ... color_init
+COLOR = [d for d in range(1, TEST_COUNT + 1)]
 Y_BASE = 100
 C_MIN, C_MAX = -8, 8  # c は -8..8 の17値をループする
 PERIOD = C_MAX - C_MIN + 1
@@ -54,9 +57,11 @@ DIAG_STATUS_LAG = 2
 
 
 def build_vdp() -> V9938:
-    vdp = V9938()
+    # sc4_sp01.asm は SCREEN4(GRAPHIC3)。SCREEN5-8と違いR#9のLNビットが立たず
+    # 192ライン表示のまま(stage4.V9938のクラスコメント参照)。
+    vdp = V9938(screen_height=192)
     vdp.set_sprite_pattern(0, SPRITE_PATTERN)
-    # sc5_sp02.asm は CHGMOD実行直後にWRTVDPでVDPレジスタ7を直接
+    # sc4_sp01.asm は CHGMOD実行直後にWRTVDPでVDPレジスタ7を直接
     # 4(濃い青)から5(薄い青)へ書き換えている。このタイミングでのR#7書き換えは
     # 実機/C-BIOS上では枠(border)にしか効かず、画面内の背景色(CHGMOD時に
     # VRAMへ焼き込まれたBIOSデフォルトの4)はそのまま変わらない
@@ -64,16 +69,10 @@ def build_vdp() -> V9938:
     vdp.set_backdrop_color(5)
     # スプライト拡大
     vdp.set_sprite_mag(True)
-    # sc5_sp02.asm の color_init 相当:
-    # d = 2 から 10 まで
-    # 各スプライトの8バイトカラーテーブル:
-    #   2 bytes: color d
-    #   4 bytes: color d + 1
-    #   2 bytes: color d
-    for d in range(2, 11):
-        i = d - 2  # 0-indexed sprite index (d=2 -> i=0, ..., d=10 -> i=8)
-        colors = [d, d] + [d + 1] * 4 + [d, d]
-        vdp.set_sprite_color(i, colors)
+    # 各スプライトの色を設定 (Sprite Mode 2 ではカラーテーブルに設定する)
+    # asm側: SPRATR - 0200h がカラーテーブル位置 (SAT - 512)
+    for i, c in enumerate(COLOR):
+        vdp.set_sprite_color(i, [c] * 8)
     return vdp
 
 
@@ -103,8 +102,7 @@ class Simulation:
         for _ in range(DIAG_STATUS_LAG):
             prev_c = _prev_c(prev_c)
         for i, y in enumerate(sprite_y_values(prev_c)):
-            self.vdp.set_sprite(i, X[i], y, 0, 0)  # color is in color table, set color byte to 0 in SAT
-        # DIAG_INDEX: y=0, x=index (0 initially), pattern=0, color=normal/overflow
+            self.vdp.set_sprite(i, X[i], y, 0, COLOR[i])
         self.vdp.set_sprite(DIAG_INDEX, 0, 208, 0, 0)
         self.vdp.set_sprite(DIAG_INDEX+1, 0, 216, 0, 0)
 
@@ -113,7 +111,7 @@ class Simulation:
         diag_color = DIAG_COLOR_OVERFLOW if overflow else DIAG_COLOR_NORMAL
 
         for i, y in enumerate(sprite_y_values(self.c)):
-            self.vdp.set_sprite(i, X[i], y, 0, 0)
+            self.vdp.set_sprite(i, X[i], y, 0, COLOR[i])
         self.vdp.set_sprite(DIAG_INDEX, index, DIAG_Y, 0, 0)
         self.vdp.set_sprite_color(DIAG_INDEX, [diag_color] * 8)
 
@@ -142,5 +140,5 @@ def update_expected():
 
 
 if __name__ == "__main__":
-    main(globals(), Simulation, "sc5_sp02", update_expected=update_expected,
+    main(globals(), Simulation, "sc4_sp01", update_expected=update_expected,
          wait_frames=WAIT_FRAMES, start_c=START_C)

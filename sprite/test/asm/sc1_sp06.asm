@@ -91,7 +91,7 @@ sprites_update:
     ; sprites 更新
     ld de, SPRATR
     ld hl, sprites
-    ld bc, 4 * 4
+    ld bc, 4 * (4+1)
     call LDIRVM
     ret
 wait_1sec:
