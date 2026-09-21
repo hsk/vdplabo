@@ -7,6 +7,12 @@ import random
 class V9918:
     SCREEN_WIDTH  = 256
     SCREEN_HEIGHT = 192
+    # openMSXの生キャプチャ(枠込み)に合わせたキャンバス全体のサイズ。
+    # 可視領域(SCREEN_WIDTH/HEIGHT)はこの中央に配置される。
+    CANVAS_WIDTH = 320
+    CANVAS_HEIGHT = 240
+    BORDER_X = (CANVAS_WIDTH - SCREEN_WIDTH) // 2   # 32
+    BORDER_Y = (CANVAS_HEIGHT - SCREEN_HEIGHT) // 2  # 24
     SPRITE_COUNT = 32
     SPRITE_PATTERN_COUNT = 256
     # openMSX(C-BIOS MSX2, SDLGL-PPレンダラ)で実際に描画された色を
@@ -44,10 +50,29 @@ class V9918:
         self.set_5s_index(31)
         self.set_collision(False)
         self.set_backdrop_color(4)  # BIOSデフォルト(BAKCLR=4, 青)
+        self.screen_bg_color = 4  # BIOSがCHGMOD時にカラーテーブルへ焼き込む背景色
     def set_backdrop_color(self, value):
+        """VDPレジスタ7(border/backdrop)を設定する。
+
+        GRAPHIC系モードではこのレジスタは実機上「枠(border)」のみを制御し、
+        画面内(パターン/カラーテーブルが描く可視領域)の背景色には影響しない
+        (CHGMOD実行後にWRTVDPで直接R#7を書き換えても、枠だけが変わり
+        画面内背景は変わらないことをC-BIOS/openMSXで実測して確認済み。
+        画面内背景を変えたい場合はset_screen_background_colorを使う)。
+        """
         self.reg[7] = (self.reg[7] & 0xF0) | (value & 0x0F)
     def get_backdrop_color(self):
         return self.reg[7] & 0x0F
+    def set_screen_background_color(self, value):
+        """画面内(可視領域)の背景色を設定する。
+
+        実機ではCHGMOD実行時にBAKCLRワークエリアの値がカラーテーブルへ
+        焼き込まれることで決まる(このエンジンはカラーテーブルそのものは
+        再現していないため、可視領域の背景色として直接保持する)。
+        """
+        self.screen_bg_color = value & 0x0F
+    def get_screen_background_color(self):
+        return self.screen_bg_color
     def set_sprite_pattern_table(self, addr):
         self.reg[6] = (addr >> 11) & 3
     def get_sprite_pattern_table(self):
@@ -102,16 +127,28 @@ class V9918:
         self.vram[addr + 2] = pattern & 0xff
         self.vram[addr + 3] = (color | (128 if ec else 0)) & 0xff
     def render(self, surface):
+        """surfaceはCANVAS_WIDTH x CANVAS_HEIGHT(320x240, 枠込み)を想定する。
+
+        枠(border)全体をget_backdrop_color()で塗った上で、可視領域
+        (SCREEN_WIDTH x SCREEN_HEIGHT)だけをsubsurfaceとして切り出し、
+        get_screen_background_color()で塗ってからスプライトを描画する。
+        枠色と画面内背景色は実機上別々に決まる(set_backdrop_colorの
+        docstring参照)ため、この2つは独立に塗り分ける。subsurfaceは
+        親と同じピクセルバッファを指すため、render_line_sprites側は
+        可視領域ローカル座標のまま変更不要。
+        """
         self._surface = surface
         surface.fill(self.PALETTE[self.get_backdrop_color()])
+        active = surface.subsurface((self.BORDER_X, self.BORDER_Y, self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
+        active.fill(self.PALETTE[self.get_screen_background_color()])
         self.set_5s(False)
         self.set_5s_index(31)  # オーバーしなかった場合、実機では31(32枚全走査)になる
         self.set_collision(False)  # 実機はSTATFL読み取りで毎フレームクリアされる(BIOSの割り込みハンドラが担う)
         for y in range(self.SCREEN_HEIGHT):
-            self.render_line_sprites(surface, y)
+            self.render_line_sprites(active, y)
     def get_at(self, x, y):
-        """直前のrender()で使われたsurfaceの(x, y)のRGB値を返す。"""
-        return self._surface.get_at((x, y))[:3]
+        """直前のrender()で使われたsurfaceの、可視領域ローカル座標(x, y)のRGB値を返す。"""
+        return self._surface.get_at((x + self.BORDER_X, y + self.BORDER_Y))[:3]
     def render_line_sprites(self, surface, y):
         sprites_on_line = 0
         draw_log = [0] * self.SCREEN_WIDTH
@@ -176,10 +213,10 @@ if __name__ == "__main__":
         pygame.init()
         SCALE = 3
         window = pygame.display.set_mode(
-            (vdp.SCREEN_WIDTH * SCALE, vdp.SCREEN_HEIGHT * SCALE)
+            (vdp.CANVAS_WIDTH * SCALE, vdp.CANVAS_HEIGHT * SCALE)
         )
         pygame.display.set_caption("V9918 Sprite Emulator")
-        screen = pygame.Surface((vdp.SCREEN_WIDTH, vdp.SCREEN_HEIGHT))
+        screen = pygame.Surface((vdp.CANVAS_WIDTH, vdp.CANVAS_HEIGHT))
         clock = pygame.time.Clock()
         frame = 0
         while True:
@@ -196,7 +233,7 @@ if __name__ == "__main__":
                 print(f"SPRITE OVERFLOW: 5th sprite={vdp.get_5s_index()}")
             scaled = pygame.transform.scale(
                 screen,
-                (vdp.SCREEN_WIDTH * SCALE, vdp.SCREEN_HEIGHT * SCALE)
+                (vdp.CANVAS_WIDTH * SCALE, vdp.CANVAS_HEIGHT * SCALE)
             )
             window.blit(scaled, (0, 0))
             pygame.display.flip()

@@ -31,8 +31,9 @@ rom_header:
     dw 0, 0, 0, 0, 0
 init:
     ; screen 5
-    ld a, 8             ; パレット番号 0
+    LD a, 1
     ld (BDRCLR), a      ; ワークエリアへ保存
+    ld a, 8             ; パレット番号 0
     ld (BAKCLR), a
     ld a, 5
     call CHGMOD

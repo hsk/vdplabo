@@ -21,6 +21,10 @@ init:
     ; screen 5
     ld a, 5
     call CHGMOD
+    ; 背景色の設定
+    ld b, 5         ; 設定データ (5 = Light blue)
+    ld c, 7         ; ポートNo. (VDPレジスタ7番)
+    call WRTVDP
     ; スプライト拡大
     ld a, (RG1SAV)
     or 000000001b   ; sprite magnify

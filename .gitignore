@@ -11,3 +11,6 @@ __pycache__/
 
 # 見た目確認用に拡大書き出ししたwebm (video_expected.py で再生成できる)
 *_view.webm
+
+# capture_openmsx.pyが実行のたびにデバッグ用に書き出すTclスクリプト
+sprite/test/asm/out.tcl

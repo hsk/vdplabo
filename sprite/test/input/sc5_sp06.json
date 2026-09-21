@@ -1,0 +1,32 @@
+{
+  "fps": 60,
+  "events": [
+
+
+      {
+        "frame": 14,
+        "key": "DOWN",
+        "action": "down"
+      },
+      {
+        "frame": 90,
+        "key": "DOWN",
+        "action": "up"
+      },
+      {
+        "frame": 90,
+        "key": "RIGHT",
+        "action": "down"
+      },
+      {
+        "frame": 125,
+        "key": "RIGHT",
+        "action": "up"
+      },
+      {
+        "frame": 125,
+        "key": "UP",
+        "action": "down"
+      }
+  ]
+}

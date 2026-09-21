@@ -23,6 +23,7 @@ rom_header:
     dw 0, 0, 0, 0, 0
 init:
     call screen_init
+    call border_color_init
     call pattern_name_table_init
     call sprites_init
     ; 最初の一回、画面外でVRAMを更新（ゴミ取り用）
@@ -33,6 +34,12 @@ init:
     call main
     call wait_1sec ; 1秒待ち
     jr init
+border_color_init:
+    ; 背景色の設定
+    ld b, 5         ; 設定データ (5 = Light blue)
+    ld c, 7         ; ポートNo. (VDPレジスタ7番)
+    call WRTVDP
+    ret
 main:
     inc c
     ld a, c

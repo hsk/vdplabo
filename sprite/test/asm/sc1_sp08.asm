@@ -4,9 +4,11 @@ LDIRVM equ 0005Ch       ; メモリからVRAMへ一括転送 (BC=サイズ, DE=V
 SPRATR equ 01B00h       ; VRAMのスプライト属性テーブル起点アドレス
 SPRPAT equ 03800h       ; VRAMのパターンジェネレータ起点アドレス
 RG1SAV equ 0F3E0h       ; VDPレジスタ退避アドレス
-JIFFY  equ 0FC9Eh
+HTIMI  equ 0FD9Fh       ; H.TIMI フック(割り込みのたびにBIOSが呼ぶ)
 sprites equ 0C000h
 seed equ 0C100h
+vint equ 0C140h         ; H.TIMIフックが割り込みのたびにインクリメントするカウンタ
+htimi_old equ 0C141h    ; H.TIMIフック設置前の内容の退避先(5バイト)
     org 04000h          ; カセットROMはページ2(04000h)に配置
 rom_header:
     db "AB"             ; ROMの識別ID (04000h)
@@ -16,6 +18,10 @@ init:
     ; SCREEN 1 の設定
     ld a, 1
     call CHGMOD
+    ; 背景色の設定
+    ld b, 5         ; 設定データ (5 = Light blue)
+    ld c, 7         ; ポートNo. (VDPレジスタ7番)
+    call WRTVDP
     ; スプライト拡大
     ld a, (RG1SAV)
     or 000000011b   ; sprite magnify
@@ -130,20 +136,59 @@ init:
         end_reset:
 
         djnz loop4
+
 ;    self.mode = 3
-main:
+    ; loop1/loop2/loop3(パターン転送)はbc=2のつもりがdjnzがBしか見ないため
+    ; 実際には256回まわり、spritesテーブルを大きく超えた範囲(0C000h以降
+    ; 8KB程度)を書き換えてしまう(既存のバグ、このコミットでは未修正)。
+    ; H.TIMIフックの退避先(htimi_old)がこの範囲と重ならないよう、割り込みを
+    ; 有効化するinstall_htimi_hookは初期化の全処理が終わった後、mainループへ
+    ; 入る直前に呼ぶ(このループの手前で呼ぶとhtimi_oldが書き換えられ、
+    ; 割り込みハンドラがゴミへjpして暴走する)。
+    call install_htimi_hook
+    jp main
+
+install_htimi_hook:
+    ; sc1_sp04.asmと同じ手法。BIOSのJIFFY(0FC9Eh)を直接ポーリングすると
+    ; VSYNCの検出が遅れてズレることがあったため、H.TIMI(0FD9Fh、割り込みの
+    ; たびにBIOSが呼ぶフック)を自前のハンドラに差し替え、割り込みそのもの
+    ; に同期して確実にvintをインクリメントする方式に変更した。
+    di
+    ld hl, HTIMI
+    ld de, htimi_old
+    ld bc, 5
+    ldir
+    ld hl, htimi_rep
+    ld de, HTIMI
+    ld bc, 3
+    ldir
+    ei
+    ret
+htimi_rep:
+    jp htimi_new
+
+htimi_new:
     ; VRAMへスプライト属性(座標)を転送
     ;ld de, SPRATR               ; VRAMのスプライト属性テーブル起点アドレス
     ;ld hl, sprites     ; 転送元
     ;ld bc, 32*4                  ; 4バイト (Y, X, パターン, 補足)
     ;call LDIRVM
-    ; VSYNC
-    ld hl, JIFFY
+
+    call update_vram
+    ld hl, vint
+    inc (hl)
+    jp htimi_old
+
+wait_vsync:
+    ld hl, vint
     ld a, (hl)
     vsync:
         cp (hl)
         jr z, vsync
-    call update_vram
+    ret
+
+main:
+    call wait_vsync
     ld ix, sprites
     ld b, 32
     spmove_loop:
@@ -213,29 +258,35 @@ spmove:
     not_overy:
     ret
 ; --- 📦 5バイト構造を正しい4バイトにしてVRAM（SPRATR）へ送る関数 ---
+; LDIRVMをスプライト32個分(4バイトずつ)個別に呼んでいたときは、呼ぶたびに
+; VRAM書き込みアドレスの再設定(ポート99hへ2回OUT)とBIOS呼び出し自体の
+; オーバーヘッドが32回分乗ってしまい、htimi_new(割り込みハンドラ)内で
+; 呼ぶには遅すぎた。VDPはアドレス設定後、ポート98hへ書くたびに書き込み先が
+; 自動インクリメントされるので、アドレス設定はSPRATR先頭で一度だけ行い、
+; あとは32スプライト分(YH,XH,パターン,色の4バイト)を直接out (98h),aで
+; 続けて送るようにした。
 update_vram:
+    ld a, 000h              ; SPRATR & 0FFh (下位バイト)
+    out (099h), a
+    ld a, 05Bh              ; (SPRATR >> 8) | 040h (上位バイト、bit6=書き込みモード)
+    out (099h), a
     ld hl, sprites
-    ld de, SPRATR
     ld b, 32        ; 32スプライト分
 vram_loop:
-    push bc
-        ld bc, 4
-        push bc
-            add hl, bc      ; 4バイト分進む
-            inc hl          ; 5バイト分進む
-            inc hl          ; 6バイト分進む
-            push de
-            push hl
-            call LDIRVM     ; HLが4進み、DE（VRAMアドレス）も4進むことはない
-            pop hl
-            pop de
-        pop bc
-        add hl, bc
-        inc de
-        inc de
-        inc de
-        inc de
-    pop bc
+    ld de, 6
+    add hl, de      ; DXH,DXL,DYH,DYL,XL,YLを読み飛ばしてYHへ
+    ld a, (hl)
+    out (098h), a   ; Y
+    inc hl
+    ld a, (hl)
+    out (098h), a   ; X
+    inc hl
+    ld a, (hl)
+    out (098h), a   ; パターン番号
+    inc hl
+    ld a, (hl)
+    out (098h), a   ; 色
+    inc hl
     djnz vram_loop
     ret
 

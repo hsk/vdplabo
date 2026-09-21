@@ -1,6 +1,6 @@
 ; MSX カセットROM SCREEN 1 スプライト1つ
 ; --- MSX BIOSのアドレス定義 ---
-WRTVDP equ 00047h       ; VDPレジスタ書き込み (B=レジスタ, C=値)
+WRTVDP equ 00047h       ; VDPレジスタ書き込み (B=値, C=レジスタ番号)
 CHGMOD equ 0005Fh       ; 画面モード変更 (Aレジスタでモード指定)
 FILVRM equ 00056h       ; VRAM を一定値で埋める (A=値, BC=サイズ, HL=VRAM宛先)
 LDIRVM equ 0005Ch       ; メモリからVRAMへ一括転送 (BC=サイズ, DE=VRAM宛先, HL=メモリ元)
@@ -18,6 +18,7 @@ init:
     call screen_init
     call pattern_name_table_init
     call sprite_attribute_table_init
+    call border_color_init
     jp main
 screen_init:
     ; SCREEN 1 の設定
@@ -43,6 +44,12 @@ sprite_attribute_table_init:
     ld hl, sprite_attr_data     ; 転送元
     ld bc, 4                    ; 4バイト (Y, X, パターン, 補足)
     call LDIRVM
+    ret
+border_color_init:
+    ; 背景色の設定
+    ld b, 5         ; 設定データ (5 = Light blue)
+    ld c, 7         ; ポートNo. (VDPレジスタ7番)
+    call WRTVDP
     ret
 main:
     jr main             ; 画面を維持するため無限ループ

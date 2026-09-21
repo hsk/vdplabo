@@ -34,8 +34,8 @@ main:
     call sprite_attribute_table_send_vram
     jp main
 screen_init:
-    ; 背景色設定 (例: 背景1、周辺15)
-    ld      a, 0x1f
+    ; 背景色設定 (例: 背景1、周辺5)
+    ld      a, 0x15
     ld      (BCLR), a
     call    CHGCLR
     ; screen 5

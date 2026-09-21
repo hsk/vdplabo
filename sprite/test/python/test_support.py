@@ -7,17 +7,29 @@ VDP/エンジンのロジックには一切関与しない(そちらは各テス
 
 各テストファイルのSimulationクラスは self.vdp と状態だけを持つ純粋な
 状態機械で、surfaceの作成・vdp.render(surface)の呼び出し・表示ペースの
-間引きはすべてここ(呼び出し元)が担当する
-(sprite1/sprite2エンジンの解像度は今のところ256x192のみなので、
-SCREEN_WIDTH/HEIGHTは固定定数にしている)。
+間引きはすべてここ(呼び出し元)が担当する。
+
+SCREEN_WIDTH/HEIGHTはopenMSXの生キャプチャに合わせたキャンバス全体
+(320x240, 可視領域256x192の周囲に枠が付いた状態)。可視領域だけを
+決め打ちでクロップせず枠込みで比較することで、SCREEN5以降の可変な
+可視領域(256x212など)や枠色(BDRCLR)の違いも同じ比較ロジックで
+扱える(sprite1/sprite2エンジン側のCANVAS_WIDTH/HEIGHTと合わせてある。
+engine/python/sprite{1,2}/stage4.py参照)。
 """
 import pathlib
 import sys
 
 from video_expected import load_video, save_video, downscale_nearest, upscale_nearest, surface_to_rgb
 
-SCREEN_WIDTH = 256
-SCREEN_HEIGHT = 192
+SCREEN_WIDTH = 320
+SCREEN_HEIGHT = 240
+
+# expected webm保存時のニアレストネイバー拡大倍率(全テストファイル共通)。
+# ../asm/capture_openmsx.pyの--scaleのデフォルトもこれに合わせてある。
+# 3倍も検討したが、SCREEN6/7(512ドット幅モード)を将来サポートすると
+# 320x240キャンバスの2倍(640)がその実解像度と一致しキリが良いため、
+# 2倍(640x480)にしている。
+EXPECTED_SCALE = 2
 
 # ../asm/capture_openmsx.pyのデフォルト録画秒数(DEFAULT_DURATION=2.0) x FPS(60)。
 # sc1_sp01のような静止画面テストはcount=1(1フレームのみ)で足りるが、それだと
@@ -120,7 +132,7 @@ def compare_to_expected(actual_frames, expected_path: pathlib.Path, width: int, 
         assert a == e, f"frame {i} differs from expected"
 
 
-def assert_matches_expected_video(simulation_cls, count: int, caller_file: str, scale: int = 4,
+def assert_matches_expected_video(simulation_cls, count: int, caller_file: str, scale: int = EXPECTED_SCALE,
                                    wait_frames: int = 1, **kwargs) -> None:
     """render_expected_frames + compare_to_expected をまとめたもの。
     test_matches_expected_video() の本体を1行で書けるようにするため。
@@ -128,7 +140,7 @@ def assert_matches_expected_video(simulation_cls, count: int, caller_file: str, 
     expected_pathはcaller_file(通常は__file__)のファイル名から
     ../expected/<モジュール名>.webm として自動的に決まる(全テストファイルが
     その命名規則に従っているため)。width/heightも渡す必要は無い
-    (render_expected_frames参照)。scaleは省略時4(全テストファイル共通の値)。
+    (render_expected_frames参照)。scaleは省略時EXPECTED_SCALE(全テストファイル共通の値)。
     """
     caller_path = pathlib.Path(caller_file)
     expected_path = expected_path_for(caller_file, caller_path.stem + ".webm")
@@ -144,7 +156,7 @@ def write_expected(frames, expected_path: pathlib.Path, width: int, height: int,
     print(f"wrote {expected_path} ({width * scale}x{height * scale}, {len(scaled)} frames)")
 
 
-def render_and_write_expected(simulation_cls, count: int, caller_file: str, scale: int = 4,
+def render_and_write_expected(simulation_cls, count: int, caller_file: str, scale: int = EXPECTED_SCALE,
                                wait_frames: int = 1, **kwargs) -> None:
     """render_expected_frames + write_expected をまとめたもの。
     update_expected() の本体を1行で書けるようにするため。

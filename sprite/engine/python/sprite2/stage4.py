@@ -7,27 +7,37 @@ import random
 import math
 class V9938:
     SCREEN_WIDTH  = 256
-    SCREEN_HEIGHT = 192
+    # SCREEN5-8(V9938のビットマップモード)はSCREEN1と違い212ライン表示
+    # (実測: CHGMODでSCREEN5にした時点でR#9のLNビットが立ち、可視領域が
+    # 192ではなく212ラインになる。openMSXキャプチャとの比較で、192決め打ち
+    # だと上下10ラインずつが誤って枠(border)側に分類されることが判明した)。
+    SCREEN_HEIGHT = 212
+    # openMSXの生キャプチャ(枠込み)に合わせたキャンバス全体のサイズ。
+    # 可視領域(SCREEN_WIDTH/HEIGHT)はこの中央に配置される。
+    CANVAS_WIDTH = 320
+    CANVAS_HEIGHT = 240
+    BORDER_X = (CANVAS_WIDTH - SCREEN_WIDTH) // 2   # 32
+    BORDER_Y = (CANVAS_HEIGHT - SCREEN_HEIGHT) // 2  # 14
     SPRITE_COUNT = 32
     SPRITE_PATTERN_COUNT = 256
     SPRITE_LIMIT = 8
     VRAM_SIZE = 128 * 1024
     PALETTE = [
-        (0, 0, 0),         # 0 Transparent / black
+        (0, 0, 0),         # 0 Transparent
         (0, 0, 0),         # 1 Black
-        (33, 200, 66),     # 2 Medium green
-        (94, 220, 120),    # 3 Light green
-        (84, 85, 237),     # 4 Dark blue
-        (125, 118, 252),   # 5 Light blue
-        (212, 82, 77),     # 6 Dark red
-        (66, 235, 245),    # 7 Cyan
-        (252, 85, 84),     # 8 Medium red
-        (255, 121, 120),   # 9 Light red
-        (212, 193, 84),    # 10 Dark yellow
-        (230, 206, 128),   # 11 Light yellow
-        (33, 176, 59),     # 12 Dark green
-        (201, 91, 186),    # 13 Magenta
-        (204, 204, 204),   # 14 Gray
+        (43, 221, 43),     # 2 Medium green
+        (118, 255, 118),   # 3 Light green
+        (43, 43, 255),     # 4 Dark blue
+        (81, 118, 255),    # 5 Light blue
+        (187, 43, 43),     # 6 Dark red
+        (81, 221, 255),    # 7 Cyan
+        (255, 43, 43),     # 8 Medium red
+        (255, 118, 118),   # 9 Light red
+        (221, 221, 43),    # 10 Dark yellow
+        (221, 221, 153),   # 11 Light yellow
+        (43, 153, 43),     # 12 Dark green
+        (221, 81, 187),    # 13 Magenta
+        (187, 187, 187),   # 14 Gray
         (255, 255, 255),   # 15 White
     ]
     def __init__(self):
@@ -42,6 +52,31 @@ class V9938:
         self.set_5s(False)
         self.set_5s_index(0)
         self.set_collision(False)
+        self.set_backdrop_color(4)  # BIOSデフォルト(BAKCLR=4, 青)
+        self.screen_bg_color = 4  # BIOSがCHGMOD時にVRAM(ビットマップ)へ焼き込む背景色
+    def set_backdrop_color(self, value):
+        """VDPレジスタ7(border/backdrop)を設定する。
+
+        GRAPHIC系モードではこのレジスタは実機上「枠(border)」のみを制御し、
+        画面内(ビットマップが描く可視領域)の背景色には影響しない
+        (CHGMOD実行後にWRTVDPで直接R#7を書き換えても、枠だけが変わり
+        画面内背景は変わらないことをC-BIOS/openMSXで実測して確認済み。
+        sprite1/stage4.pyのV9918.set_backdrop_colorと同じ。画面内背景を
+        変えたい場合はset_screen_background_colorを使う)。
+        """
+        self.reg[7] = (self.reg[7] & 0xF0) | (value & 0x0F)
+    def get_backdrop_color(self):
+        return self.reg[7] & 0x0F
+    def set_screen_background_color(self, value):
+        """画面内(可視領域)の背景色を設定する。
+
+        実機ではCHGMOD実行時にBAKCLRワークエリアの値がVRAM(ビットマップ)へ
+        焼き込まれることで決まる(このエンジンはビットマップそのものは
+        再現していないため、可視領域の背景色として直接保持する)。
+        """
+        self.screen_bg_color = value & 0x0F
+    def get_screen_background_color(self):
+        return self.screen_bg_color
     def set_sprite_pattern_table(self, addr):
         self.reg[6] = (addr >> 11) & 0x3F
     def get_sprite_pattern_table(self):
@@ -113,13 +148,29 @@ class V9938:
         self.vram[addr + 2] = pattern & 0xff
         self.vram[addr + 3] = (color | (128 if ec else 0)) & 0xff
     def render(self, surface):
-        surface.fill((0, 0, 0))
+        """surfaceはCANVAS_WIDTH x CANVAS_HEIGHT(320x240, 枠込み)を想定する。
+
+        枠(border)全体をget_backdrop_color()で塗った上で、可視領域
+        (SCREEN_WIDTH x SCREEN_HEIGHT)だけをsubsurfaceとして切り出し、
+        get_screen_background_color()で塗ってからスプライトを描画する。
+        枠色と画面内背景色は実機上別々に決まる(set_backdrop_colorの
+        docstring参照)ため、この2つは独立に塗り分ける。subsurfaceは
+        親と同じピクセルバッファを指すため、render_line_sprites側は
+        可視領域ローカル座標のまま変更不要。
+        """
+        self._surface = surface
+        surface.fill(self.PALETTE[self.get_backdrop_color()])
+        active = surface.subsurface((self.BORDER_X, self.BORDER_Y, self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
+        active.fill(self.PALETTE[self.get_screen_background_color()])
         self.set_5s(False)
         self.set_5s_index(0)
         self.set_collision(False)
         if self.get_spd(): return
         for y in range(self.SCREEN_HEIGHT):
-            self.render_line_sprites(surface, y)
+            self.render_line_sprites(active, y)
+    def get_at(self, x, y):
+        """直前のrender()で使われたsurfaceの、可視領域ローカル座標(x, y)のRGB値を返す。"""
+        return self._surface.get_at((x + self.BORDER_X, y + self.BORDER_Y))[:3]
     def render_line_sprites(self, surface, y):
         sprites_on_line = 0
         draw_log = bytearray(self.SCREEN_WIDTH)
@@ -179,10 +230,10 @@ if __name__ == "__main__":
         pygame.init()
         SCALE = 3
         window = pygame.display.set_mode(
-            (vdp.SCREEN_WIDTH * SCALE, vdp.SCREEN_HEIGHT * SCALE)
+            (vdp.CANVAS_WIDTH * SCALE, vdp.CANVAS_HEIGHT * SCALE)
         )
         pygame.display.set_caption("V9938 Sprite Emulator")
-        screen = pygame.Surface((vdp.SCREEN_WIDTH, vdp.SCREEN_HEIGHT))
+        screen = pygame.Surface((vdp.CANVAS_WIDTH, vdp.CANVAS_HEIGHT))
         clock = pygame.time.Clock()
         frame = 0
         while True:
@@ -198,7 +249,7 @@ if __name__ == "__main__":
                 print(f"SPRITE OVERFLOW: 9th sprite={vdp.get_5s_index()}")
             scaled = pygame.transform.scale(
                 screen,
-                (vdp.SCREEN_WIDTH * SCALE, vdp.SCREEN_HEIGHT * SCALE)
+                (vdp.CANVAS_WIDTH * SCALE, vdp.CANVAS_HEIGHT * SCALE)
             )
             window.blit(scaled, (0, 0))
             pygame.display.flip()

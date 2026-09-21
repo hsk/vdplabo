@@ -18,7 +18,14 @@ init:
     call screen_init
     call pattern_name_table_init
     call sprite_attribute_table_init
+    call border_color_init
     jr main
+border_color_init:
+    ; 背景色の設定
+    ld b, 5         ; 設定データ (5 = Light blue)
+    ld c, 7         ; ポートNo. (VDPレジスタ7番)
+    call WRTVDP
+    ret
 main:
     jr main             ; 画面を維持するため無限ループ
 screen_init:

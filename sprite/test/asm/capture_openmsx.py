@@ -30,9 +30,12 @@
   壁時計ベースのままにしてある。
 - openMSXの`record`はZMBV(Zip Motion Blocks Video)というロスレスコーデックで
   AVIに録画する。ffmpegがZMBVのデコーダを内蔵しているのでそのまま読める。
-- 録画される画面は320x240で、実際の可視領域256x192の周囲にボーダー
-  (枠)が付いた状態。中央寄せと仮定して単純にクロップする
-  (BORDER_X=32, BORDER_Y=24)。
+- 録画される画面は320x240(実測ではSCREEN5でも同じ320x240になる)。
+  以前は可視領域256x192だけを中央寄せと仮定してクロップしていたが、
+  SCREEN5以降は可視領域が256x212/512x212など可変な上、枠色(BDRCLR)自体も
+  テスト対象にしたいため、今はクロップせず320x240のまま比較に使う
+  (`BORDER_X=32, BORDER_Y=24`はpython側エンジンが可視領域を貼る位置の
+  オフセットとして`probe_palette.py`向けの後方互換クロップ関数でのみ使う)。
 
 起動ロゴのスキップについて:
 - 以前は実時間の`--boot-wait`(何秒待つか)で決め打ちしていたが、
@@ -117,10 +120,22 @@ def build_frame_tick_script(events: list, exit_frame: int) -> str:
     return "\n".join(lines)
 
 
+RECORD_SCALE_FLAGS = {1: "", 2: " -doublesize", 3: " -triplesize"}
+
+
 def run_capture(rom: pathlib.Path, out_avi: pathlib.Path, settle: float = 0.2, duration: float = 1.0,
                  timeout: float = None, input_path: pathlib.Path = None,
-                 settle_frames: int = None, duration_frames: int = None):
+                 settle_frames: int = None, duration_frames: int = None, record_scale: int = 1):
     """openMSXでromを実行し、initに到達してからsettle秒後~duration秒間を録画してout_aviに保存する。
+
+    record_scaleはopenMSXの`record start`が対応する1(等倍, 320x240)/
+    2(-doublesize, 640x480)/3(-triplesize, 960x720)のいずれか。
+    ソフトウェアでのニアレストネイバー拡大と完全にビット一致することを
+    実測で確認済み(SCREEN1の256ドット幅モードの場合)だが、SCREEN6/7の
+    512ドット幅モードでは`-doublesize`が等倍録画の単純な2倍拡大ではなく、
+    内部でその幅を落とさず捉えた結果になる可能性があるため
+    (512ドットが等倍の320幅raw録画では潰れてしまう一方、-doublesizeの
+    640幅ならちょうど収まる)、常にopenMSX側の該当フラグを使う。
 
     input_pathを指定した場合(省略時はdefault_input_path(rom)が存在すればそれを使う)、
     そのinput script(../input/README.md参照)のキー入力を録画開始(settle_frames)を
@@ -141,8 +156,11 @@ def run_capture(rom: pathlib.Path, out_avi: pathlib.Path, settle: float = 0.2, d
         if not input_path.exists():
             input_path = None
 
+    if record_scale not in RECORD_SCALE_FLAGS:
+        raise ValueError(f"record_scale must be one of {sorted(RECORD_SCALE_FLAGS)}, got {record_scale}")
+    record_flag = RECORD_SCALE_FLAGS[record_scale]
     events = [
-        (settle_frames, f"record start {out_avi}"),
+        (settle_frames, f"record start{record_flag} {out_avi}"),
         (stop_frames, "record stop"),
         (exit_frames, "exit"),
     ]
@@ -191,9 +209,32 @@ def run_capture(rom: pathlib.Path, out_avi: pathlib.Path, settle: float = 0.2, d
         )
 
 
-def avi_to_cropped_rgb_frames(avi_path: pathlib.Path):
-    """録画したavi(320x240, 枠付き)を256x192(可視領域のみ)の生RGBフレーム列に変換する。"""
-    crop = f"crop={256}:{192}:{BORDER_X}:{BORDER_Y}"
+def avi_to_rgb_frames(avi_path: pathlib.Path, width: int = OPENMSX_WIDTH, height: int = OPENMSX_HEIGHT):
+    """録画したavi(320x240, 枠付き)をクロップせず生RGBフレーム列に変換する。"""
+    proc = subprocess.run(
+        [
+            "ffmpeg", "-y", "-i", str(avi_path),
+            "-an", "-f", "rawvideo", "-pix_fmt", "rgb24", "-",
+        ],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"ffmpeg convert failed: {proc.stderr.decode(errors='replace')[-1500:]}")
+    frame_size = width * height * 3
+    raw = proc.stdout
+    if len(raw) % frame_size != 0:
+        raise ValueError(f"unexpected size {len(raw)} (not a multiple of {frame_size})")
+    return [raw[i:i + frame_size] for i in range(0, len(raw), frame_size)]
+
+
+def avi_to_cropped_rgb_frames(avi_path: pathlib.Path, width: int = 256, height: int = 192,
+                               x: int = BORDER_X, y: int = BORDER_Y):
+    """avi_to_rgb_framesを可視領域(デフォルト256x192)にクロップする後方互換版。
+
+    probe_palette.pyのようにスプライト1個分の座標を直接pxで拾うだけの
+    用途では、クロップ済みの方が座標計算が単純なため残してある。
+    """
+    crop = f"crop={width}:{height}:{x}:{y}"
     proc = subprocess.run(
         [
             "ffmpeg", "-y", "-i", str(avi_path),
@@ -204,7 +245,7 @@ def avi_to_cropped_rgb_frames(avi_path: pathlib.Path):
     )
     if proc.returncode != 0:
         raise RuntimeError(f"ffmpeg crop failed: {proc.stderr.decode(errors='replace')[-1500:]}")
-    frame_size = 256 * 192 * 3
+    frame_size = width * height * 3
     raw = proc.stdout
     if len(raw) % frame_size != 0:
         raise ValueError(f"unexpected size {len(raw)} (not a multiple of {frame_size})")
@@ -212,25 +253,26 @@ def avi_to_cropped_rgb_frames(avi_path: pathlib.Path):
 
 
 def capture_to_webm(rom: pathlib.Path, out_webm: pathlib.Path, settle: float = 0.2, duration: float = 2.0,
-                     scale: int = 4, input_path: pathlib.Path = None,
+                     scale: int = 2, input_path: pathlib.Path = None,
                      settle_frames: int = None, duration_frames: int = None) -> int:
-    """録画(avi)→クロップ→ニアレストネイバー拡大→webm保存までを一括で行う。
+    """録画(openMSX側で直接scale倍のaviを録画)→webm保存までを一括で行う。
 
-    中間のaviは一時ファイルとして扱い、最後に破棄する。戻り値はフレーム数。
-    settle_frames/duration_framesはrun_capture参照。
+    ソフトウェアでの拡大は行わず、openMSXの`record start`自体にscaleを
+    渡す(run_captureのrecord_scale参照)。中間のaviは一時ファイルとして
+    扱い、最後に破棄する。戻り値はフレーム数。settle_frames/duration_frames
+    はrun_capture参照。
     """
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "python"))
-    from video_expected import save_video, upscale_nearest  # noqa: E402
+    from video_expected import save_video  # noqa: E402
 
     with tempfile.TemporaryDirectory() as tmp:
         avi_path = pathlib.Path(tmp) / "capture.avi"
         run_capture(rom, avi_path, settle, duration, input_path=input_path,
-                    settle_frames=settle_frames, duration_frames=duration_frames)
-        frames = avi_to_cropped_rgb_frames(avi_path)
+                    settle_frames=settle_frames, duration_frames=duration_frames, record_scale=scale)
+        frames = avi_to_rgb_frames(avi_path, OPENMSX_WIDTH * scale, OPENMSX_HEIGHT * scale)
 
-    scaled = [upscale_nearest(f, 256, 192, scale) for f in frames]
     out_webm.parent.mkdir(parents=True, exist_ok=True)
-    save_video(scaled, 256 * scale, 192 * scale, out_webm)
+    save_video(frames, OPENMSX_WIDTH * scale, OPENMSX_HEIGHT * scale, out_webm)
     return len(frames)
 
 
@@ -238,7 +280,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("rom", type=pathlib.Path)
     parser.add_argument("-o", "--output", type=pathlib.Path, default=None,
-                         help="出力先。拡張子が.webmならクロップ+4倍拡大まで済ませたwebmを直接書き出す"
+                         help="出力先。拡張子が.webmなら320x240のまま2倍拡大まで済ませたwebmを直接書き出す"
                               "(省略時は<rom>.avi、生のaviのまま保存)")
     parser.add_argument("--settle", type=float, default=0.2, help="initブレークポイント到達後、録画開始までの待ち秒数")
     parser.add_argument("--settle-frames", type=int, default=None,
@@ -249,7 +291,7 @@ if __name__ == "__main__":
                               "そのスクリプトを最後まで再生しきれる秒数を自動計算する)")
     parser.add_argument("--duration-frames", type=int, default=None,
                          help="--durationをフレーム数で指定する版(指定時は--duration/自動計算より優先)")
-    parser.add_argument("--scale", type=int, default=4, help="webm出力時のニアレストネイバー拡大倍率")
+    parser.add_argument("--scale", type=int, default=2, help="webm出力時のニアレストネイバー拡大倍率")
     parser.add_argument("--input", type=pathlib.Path, default=None,
                          help="キー入力スクリプト(JSON、../input/README.md参照)。"
                               "省略時は../input/<rom名>.jsonが存在すれば自動的に使う")

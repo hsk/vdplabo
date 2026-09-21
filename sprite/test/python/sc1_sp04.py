@@ -49,7 +49,10 @@ import collections
 import pathlib
 import sys
 
-from test_support import add_engine_path, expected_path_for, compare_to_expected, write_expected, make_surface, main  # noqa: E402
+from test_support import (  # noqa: E402
+    add_engine_path, expected_path_for, compare_to_expected, write_expected, make_surface, main,
+    SCREEN_WIDTH, SCREEN_HEIGHT, EXPECTED_SCALE,
+)
 from video_expected import surface_to_rgb  # noqa: E402
 
 add_engine_path(__file__)
@@ -58,9 +61,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "input"))
 from stage4 import V9918  # noqa: E402
 from input_script import load_input_script, events_by_frame, duration_seconds  # noqa: E402
 
-SCREEN_WIDTH = 256
-SCREEN_HEIGHT = 192
-VIEW_SCALE = 4
+VIEW_SCALE = EXPECTED_SCALE
 
 # sc1_sp04.asm の sprite_pattern_data と同じ8バイト
 # (asmは9桁の2進数リテラル(例: 000011000b)で書かれているが、
@@ -83,6 +84,13 @@ def build_vdp() -> V9918:
     vdp.set_sprite_mag(True)  # screen_initが R#1 に or 1 する(スプライト拡大)
     vdp.set_sprite(1, SPRITE1["x"], SPRITE1["y"], 0, SPRITE1["color"])
     vdp.set_sprite(2, SPRITE2["x"], SPRITE2["y"], 0, SPRITE2["color"])
+    # sc1_sp04.asm は border_color_init で、CHGMOD実行後にWRTVDPで
+    # VDPレジスタ7を直接4(濃い青)から5(薄い青)へ書き換えている。
+    # このタイミングでのR#7書き換えは実機/C-BIOS上では枠(border)にしか
+    # 効かず、画面内の背景色(CHGMOD時にカラーテーブルへ焼き込まれた
+    # BIOSデフォルトの4)はそのまま変わらない(V9918.set_backdrop_colorの
+    # docstring、sc1_sp01.pyのbuild_vdpと同じ)。
+    vdp.set_backdrop_color(5)
     return vdp
 
 

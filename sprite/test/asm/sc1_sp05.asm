@@ -21,7 +21,14 @@ init:
     call screen_init
     call pattern_name_table_init
     call sprite_init
-    jp main
+    call border_color_init
+    jr main
+border_color_init:
+    ; 背景色の設定
+    ld b, 5         ; 設定データ (5 = Light blue)
+    ld c, 7         ; ポートNo. (VDPレジスタ7番)
+    call WRTVDP
+    ret
 main:
     ; スプライト移動の初期値
     ld c, -8    ; Y増分 -8から8の範囲で変化する

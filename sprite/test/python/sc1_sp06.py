@@ -55,6 +55,13 @@ def build_vdp() -> V9918:
         vdp.set_sprite_pattern(i, pattern)
     # sc1_sp06.asmのscreen_initもsprite_mag(拡大)ビットを立てている
     vdp.set_sprite_mag(True)
+    # sc1_sp06.asm は screen_init 直後に border_color_init を呼び、
+    # CHGMOD実行後にWRTVDPでVDPレジスタ7を直接4(濃い青)から5(薄い青)へ
+    # 書き換えている。このタイミングでのR#7書き換えは実機/C-BIOS上では
+    # 枠(border)にしか効かず、画面内の背景色(CHGMOD時にカラーテーブルへ
+    # 焼き込まれたBIOSデフォルトの4)はそのまま変わらない
+    # (V9918.set_backdrop_colorのdocstring、sc1_sp01.pyのbuild_vdpと同じ)。
+    vdp.set_backdrop_color(5)
     return vdp
 
 

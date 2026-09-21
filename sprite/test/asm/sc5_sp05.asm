@@ -31,7 +31,7 @@ init:
     LD (FORCLR), A
     LD A, 1
     LD (BAKCLR), A
-    LD A, 0
+    LD A, 5
     LD (BDRCLR), A
     CALL CHGCLR
     ; screen 5

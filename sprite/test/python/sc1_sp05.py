@@ -87,10 +87,13 @@ def build_vdp() -> V9918:
     vdp = V9918()
     vdp.set_sprite_pattern(0, SPRITE_PATTERN)
     vdp.set_sprite_mag(True)
-    # sc1_sp05.asm もVDPレジスタ7(背景色)を書き換えていないため、
-    # BIOSのデフォルト値(BAKCLR=4, 青)がそのまま背景色として残る
-    # (V9918のコンストラクタ自体がBIOSデフォルトの4で初期化するので、
-    # ここで明示的に呼ぶ必要は無い)。
+    # sc1_sp05.asm は border_color_init で、CHGMOD実行後にWRTVDPで
+    # VDPレジスタ7を直接4(濃い青)から5(薄い青)へ書き換えている。
+    # このタイミングでのR#7書き換えは実機/C-BIOS上では枠(border)にしか
+    # 効かず、画面内の背景色(CHGMOD時にカラーテーブルへ焼き込まれた
+    # BIOSデフォルトの4)はそのまま変わらない(V9918.set_backdrop_colorの
+    # docstring、sc1_sp01.pyのbuild_vdpと同じ)。
+    vdp.set_backdrop_color(5)
     return vdp
 
 

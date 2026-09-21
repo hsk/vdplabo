@@ -60,10 +60,13 @@ def build_vdp() -> V9918:
     vdp.set_sprite_pattern(SPRITE_PATTERN_NO, SPRITE_PATTERN)
     vdp.set_sprite(0, SPRITE_X, SPRITE_Y, SPRITE_PATTERN_NO, SPRITE_COLOR)
     vdp.set_sprite_mag(True)
-    # sc1_sp01.asm はVDPレジスタ7(背景色)を書き換えていないため、
-    # BIOSのデフォルト値(BAKCLR=4, 青)がそのまま背景色として残る
-    # (V9918のコンストラクタ自体がBIOSデフォルトの4で初期化するので、
-    # ここで明示的に呼ぶ必要は無い)。
+    # sc1_sp01.asm は border_color_init で、CHGMOD実行後にWRTVDPで
+    # VDPレジスタ7を直接4(濃い青)から5(薄い青)へ書き換えている。
+    # このタイミングでのR#7書き換えは実機/C-BIOS上では枠(border)にしか
+    # 効かず、画面内の背景色(CHGMOD時にカラーテーブルへ焼き込まれた
+    # BIOSデフォルトの4)はそのまま変わらない(set_backdrop_colorの
+    # docstring参照)。
+    vdp.set_backdrop_color(5)
     return vdp
 
 
@@ -86,12 +89,22 @@ def test_magnify_is_applied():
     assert vdp.get_sprite_mag() is True
 
 
-# BIOSデフォルト(BAKCLR=4, 青)。openMSXで実測した値(PALETTE[4]と同じ)。
+# 画面内(可視領域)の背景色。BIOSデフォルトのまま(BAKCLR=4, 濃い青)。
+# openMSXで実測した値(PALETTE[4]と同じ)。
 BACKGROUND_COLOR = V9918.PALETTE[4]
+# border_color_init がCHGMOD後に書き換える枠(border)の色(5, 薄い青)。
+BORDER_COLOR = V9918.PALETTE[5]
 
 
 def test_background_is_blue():
     assert render_frame(Simulation).vdp.get_at(0, 0) == BACKGROUND_COLOR
+
+
+def test_border_is_different_blue():
+    # 枠(border)は画面内背景と別に、border_color_initが書き換えた色になる。
+    # get_at()は可視領域ローカル座標を受け取るため、負の座標を渡すと
+    # 可視領域の外(枠)を指すことになる。
+    assert render_frame(Simulation).vdp.get_at(-10, -10) == BORDER_COLOR
 
 
 def test_sprite_top_left_corner_is_background():

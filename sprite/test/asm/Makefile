@@ -1,12 +1,12 @@
 TARGETs = sc1_sp01 sc1_sp02 sc1_sp03 sc1_sp04 sc1_sp05 sc1_sp06 sc1_sp07 sc1_sp08 \
-          sc5_hra sc5_sp01 sc5_sp02 sc5_sp03 sc5_sp03_2 sc5_sp04 sc5_sp05 sc5_sp06 sc5_sp07
+          sc5_hra sc5_sp01 sc5_sp02 sc5_sp03 sc5_sp03_2 sc5_sp04 sc5_sp05 sc5_sp06 sc5_sp07 \
+          sc7_sp01
 
 all: $(TARGETs)
 
 sc1_%:
 	z88dk-z80asm -b $@.asm -orom/$@.rom
 	rm -rf *.o
-	openmsx -carta rom/$@.rom
 
 # パレット実測用の診断ROM。実行はせずビルドのみ(実行はprobe_palette.pyから)。
 probe_palette:
@@ -17,10 +17,13 @@ probe_palette:
 probe-palette: probe_palette
 	python3 probe_palette.py rom/probe_palette.rom
 
-sc5_%:
+sc5_% sc7_%:
+	echo "ビルド中: $@"
 	java -jar glass-0.6.jar $@.asm rom/$@.rom
 #	../../../../../msxemu/msx2_sdl/app rom/$@.rom
-	openmsx -carta rom/$@.rom
+run_%:
+	make $*
+	openmsx -carta rom/$*.rom
 
 show-path:
 	openmsx -command "puts \"=== 録画データの保存先 ===\"; puts [file join $$env(OPENMSX_USER_DATA) \"captures\"]; quit"
@@ -40,13 +43,15 @@ capture:
 #   (sc1_sp06など、起動直後に長い静止区間がありFRAME_COUNTが120を超える
 #   ROM)を録る時に使う。expected側(../python/<ROM>.py)のフレーム数以上を
 #   指定すること。
-capture_%:
+cap_% capture_%:
+	make $*
 	python3 capture_openmsx.py rom/$*.rom -o ../expected/$*_openmsx.webm $(if $(SETTLE),--settle-frames $(SETTLE),) $(if $(DURATION),--duration-frames $(DURATION),)
 
 test_%:
 	python3 compare_webm.py ../expected/$*.webm ../expected/$*_openmsx.webm
 
-cap_test_%:
+captest_%:
+	make $*
 	python3 capture_openmsx.py rom/$*.rom -o ../expected/$*_openmsx.webm $(if $(SETTLE),--settle-frames $(SETTLE),) $(if $(DURATION),--duration-frames $(DURATION),)
 	python3 compare_webm.py ../expected/$*.webm ../expected/$*_openmsx.webm
 
@@ -54,13 +59,25 @@ cap_test_%:
 # 固定してキャプチャする(実測値。理由は上のコメントと../python/sc1_sp05.py
 # のstart_cコメント参照)。ターゲット固有変数として指定するだけで、
 # レシピ自体は上のcap_test_%パターンがそのまま使われる。
-cap_test_sc1_sp05 capture_sc1_sp05: SETTLE = 10
+captest_sc1_sp05 capture_sc1_sp05: SETTLE = 10
 
 # sc1_sp06はLEAD_IN_FRAMES(wait_1sec相当)込みでexpectedが139フレーム
 # (../python/sc1_sp06.pyのFRAME_COUNT)あるため、デフォルトの2秒(120フレーム)
 # では足りない。compare_webm.pyはフレーム数の厳密一致を要求するので、
 # ちょうど139フレームを指定する。
-cap_test_sc1_sp06 capture_sc1_sp06: DURATION = 139
+captest_sc1_sp06 capture_sc1_sp06: DURATION = 139
+
+captest_sc5_sp01 capture_sc5_sp01: SETTLE = 13
+
+captest_sc7_sp01 capture_sc7_sp01: SETTLE = 40
+
+# 全ROMをビルドし直してopenMSXキャプチャ(../expected/*_openmsx.webm)を
+# 撮り直す(capture_%を全ターゲット分まわすだけ。SETTLE/DURATIONの
+# ターゲット固有変数は$(MAKE)の再帰呼び出しでもそのまま効く)。
+# 古いスケール(4倍=1280x960など)で撮られたままのファイルを
+# 現在のデフォルト(openMSXの-doublesize, 640x480)に揃えたい時に使う。
+recapture-all:
+	@for t in $(TARGETs); do $(MAKE) capture_$$t; done
 
 clean:
 	rm -rf rom/*.rom
