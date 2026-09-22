@@ -28,5 +28,7 @@ openMSXでROMを実行して録画したものを`scN_spNN_openmsx.webm`とし�
 
 <div><video controls src="https://raw.githubusercontent.com/hsk/vdplabo/refs/heads/main/sprite/test/expected/sc1_sp01.mp4" muted="false"></video></div>
 
+[sc1_sp08_openmsx.webm](https://github.com/user-attachments/assets/73e23f20-d43a-4ce3-a12e-1cd1a292ba11)
+
 ![sc1_sp01.png](sc1_sp01.png)
 ![sc1_sp08.png](sc1_sp08.png)
