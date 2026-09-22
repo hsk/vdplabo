@@ -26,3 +26,5 @@ openMSXでROMを実行して録画したものを`scN_spNN_openmsx.webm`とし�
 <video src="sc1_sp02_openmsx.webm" controls width="640" height="480"></video>
 
 ![sc1_sp01_openmsx.webm](sc1_sp01_openmsx.webm)
+![sc1_sp01.gif](sc1_sp01.gif)
+![sc1_sp01.apng](sc1_sp01.apng)
