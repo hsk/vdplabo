@@ -43,12 +43,22 @@ class V9938:
         (187, 187, 187),   # 14 Gray
         (255, 255, 255),   # 15 White
     ]
+    # VDPレジスタ16(パレットデータ)のR/G/B各3bit値(0-7)を8bit RGBへ変換する表。
+    # 実機のDAC変換カーブは単純な線形ではないため、上のPALETTE定数
+    # (probe_palette.pyでopenMSX実機から実測した値)から各色のR/G/B成分を
+    # 逆算して求めた8段階(0,43,81,118,153,187,221,255)を使う。
+    RGB_LEVELS = (0, 43, 81, 118, 153, 187, 221, 255)
     def __init__(self, screen_height=SCREEN_HEIGHT):
         self.SCREEN_HEIGHT = screen_height
         self.BORDER_Y = (self.CANVAS_HEIGHT - screen_height) // 2
         self.vram = bytearray(self.VRAM_SIZE)
         self.reg = bytearray(12)
         self.stat = bytearray(1)
+        # パレット(R#16)はインスタンスごとにPALETTEのコピーを持ち、
+        # set_paletteで一部の色番号だけ差し替えられるようにする
+        # (CHGMODはBIOSデフォルトのパレットを再現するが、実機/asm側が
+        # R#16で書き換えた番号だけ変わり、残りはデフォルトのまま)。
+        self.palette = list(self.PALETTE)
         self.set_sprite_pattern_table(0x1b00)
         self.set_sprite_attribute_table(0x3800)
         # 実機(V9938)は未使用スプライトのY座標に終端マーカー216を置いて
@@ -79,6 +89,16 @@ class V9938:
         self.reg[7] = (self.reg[7] & 0xF0) | (value & 0x0F)
     def get_backdrop_color(self):
         return self.reg[7] & 0x0F
+    def set_palette(self, index, r, g, b):
+        """VDPレジスタ16(パレットデータ)相当。r,g,bはV9938の3bit値(0-7)。
+
+        指定したindexだけを書き換える(他の色番号はPALETTEのデフォルトのまま)。
+        """
+        self.palette[index & 0x0F] = (
+            self.RGB_LEVELS[r & 7], self.RGB_LEVELS[g & 7], self.RGB_LEVELS[b & 7],
+        )
+    def get_palette(self, index):
+        return self.palette[index & 0x0F]
     def set_screen_background_color(self, value):
         """画面内(可視領域)の背景色を設定する。
 
@@ -140,7 +160,14 @@ class V9938:
             self.vram[addr] = data[i]
             addr += 1
     def set_sprite_color(self, ch, colors):
-        addr = self.get_sprite_color_table() + ch * 8
+        # 実機のスプライトカラーテーブルは、8x8/16x16のサイズ設定に関わらず
+        # 1スプライトあたり常に16バイト固定でストライドする(16x16時の
+        # 16ライン分を格納できるよう確保されており、8x8時は先頭8バイトだけが
+        # 使われる)。sc5_sp04.asmはこの実機仕様に依存しており、意図的に
+        # 「1個先のスプライト」のcolorオフセット(+16)へBIGFILしているのに
+        # openMSX実機キャプチャではその隣のスプライトの色として反映される
+        # (実測して確認済み。ストライドを8にしていると再現できない)。
+        addr = self.get_sprite_color_table() + ch * 16
         for i in range(8):
             self.vram[addr] = colors[i]
             addr += 1
@@ -171,9 +198,9 @@ class V9938:
         可視領域ローカル座標のまま変更不要。
         """
         self._surface = surface
-        surface.fill(self.PALETTE[self.get_backdrop_color()])
+        surface.fill(self.palette[self.get_backdrop_color()])
         active = surface.subsurface((self.BORDER_X, self.BORDER_Y, self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
-        active.fill(self.PALETTE[self.get_screen_background_color()])
+        active.fill(self.palette[self.get_screen_background_color()])
         self.set_5s(False)
         # 実機の仕様: 第5(9)スプライトフラグが立っていない時、5S#には
         # 終端マーカー(216)自身のインデックスが入る(216が無い=32個全部
@@ -202,6 +229,16 @@ class V9938:
         pattern_table = self.get_sprite_pattern_table()
         mag = 2 if self.get_sprite_mag() else 1
         size = (16 if self.get_sprite_size16() else 8) * mag
+        # このラインで自分より前(小さいindex)に実在したスプライトが既にあったか。
+        # CCビット(0x40)が立ったスプライトは、Xが重なっていなくても「このライン上に
+        # 前のスプライトが(Xの重なりに関係なく)存在した場合だけ」表示され、
+        # 無ければそのライン全体で何も描かれない実機仕様がある
+        # (sc5_sp05_openmsx.webmを実測して確認済み: index番号最小のCCスプライトが
+        # 単独で乗るラインは完全に非表示になるが、より小さいindexの非CCスプライトが
+        # 同じラインのどこかに存在すれば、Xが重ならなくてもCCスプライト自身の色で
+        # ソロ表示される。sc5_sp04.pyのケースはたまたま2枚のY範囲が完全に一致していた
+        # ため、このライン単位の判定と従来のピクセル単位判定の違いが表面化しなかった)。
+        has_prior_sprite = False
         for i in range(self.SPRITE_COUNT):
             spr_y = self.vram[attr_addr + 0]
             x = self.vram[attr_addr + 1]
@@ -227,11 +264,15 @@ class V9938:
                 blocks = [spr_ptn, spr_ptn + 1]
             else:
                 blocks = [spr_ptn]
-            row_color = self.vram[color_table + i * 8 + py]
+            row_color = self.vram[color_table + i * 16 + py]
             cc_bit = (row_color & 0x40) != 0
             color_index = row_color & 0x0F
+            if cc_bit and not has_prior_sprite:
+                has_prior_sprite = True
+                continue
+            has_prior_sprite = True
             if color_index == 0: continue
-            color = self.PALETTE[color_index]
+            color = self.palette[color_index]
             for pat_no in blocks:
                 bits = self.vram[pattern_table + (pat_no * 8) + py]
                 for px in range(8):
@@ -244,7 +285,7 @@ class V9938:
                                 self.set_collision(True)
                                 if cc_bit:
                                     draw_log[x] |= color_index
-                                    surface.set_at((x, y), self.PALETTE[draw_log[x]])
+                                    surface.set_at((x, y), self.palette[draw_log[x]])
                         x += 1
 if __name__ == "__main__":
     vdp = V9938()
