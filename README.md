@@ -7,11 +7,11 @@
 
 ## ディレクトリ構成
 
-実装言語で大きく2つに分かれる。PC上でVDPの挙動をシミュレートするPython実装は [python/](python) に、実機/エミュレータ上でZ80アセンブリを動かして挙動を検証するものは [asm/](asm) にまとめている。[sprite/](sprite) はPython実装(`sprite/engine`)と実機検証(`sprite/test`)が対になった研究テーマのため、この2分類の例外として、`python/`・`asm/`とは別名のサブディレクトリを持つ独自の構成にしている。
+実装言語で大きく2つに分かれる。PC上でVDPの挙動をシミュレートするPython実装は [python/](python) に、実機/エミュレータ上でZ80アセンブリを動かして動作確認を行う実装は [asm/](asm) にある。
 
 ### python/ — VDPチップ別の段階的研究 (メイン)
 
-チップ(V9918/V9938/V9958/V9968/V9990)ごとに、下記の「進め方」のステージ1〜4を踏んで実装していく。各ステージの詳細は各ディレクトリのREADMEを参照。
+チップ(V9918/V9938/V9958/V9968/V9990)ごとに、下記の「進め方」のステージ1〜4を踏んで実装していく。各ステージの詳細は各ディレクトリのREADMEを参照する。
 
 | チップ | 概要 | 進捗 |
 | --- | --- | --- |
@@ -35,12 +35,21 @@ R-Type風ゲーム制作の実験(敵/背景描画・キーフレームアニメ
 
 ### その他
 
-- [sprite/](sprite) — スプライトモード1/2について、Python参照実装(`sprite/engine`)と、実機で動くZ80アセンブリのサンプル(`sprite/test`)を集めた実地検証コード。VDPエミュレータ実装時の期待値の参考にする。
+- [sprite/](sprite) — スプライトモード1/2について、Python参照実装(`sprite/engine`)と、実機で動くZ80アセンブリのサンプル(`sprite/test`)を集めた実地検証の場所。
+
+### スプライト動作確認例
+
+この動画は `sprite/test/expected/sc1_sp08_openmsx.webm` を README から直接再生する例です。
+
+<video controls preload="metadata" width="960" playsinline>
+  <source src="https://raw.githubusercontent.com/hsk/vdplabo/main/sprite/test/expected/sc1_sp08_openmsx.webm" type="video/webm">
+  お使いのブラウザは video タグをサポートしていません。
+</video>
 
 ## TODO
 
 - [ ] gif で保存機能をつける。
-- [ ] asm/ に、JUnitのような自動テストスイート形式でMSX実機VDPの挙動を検証するテストROMを作りたい(アイデア段階。デモに走らず、まずは設計を詰めてから着手する)。
+- [ ] asm/ に、JUnitのような自動テストスイート形式でMSX実機VDPの挙動を検証するテストROMを作りたい(アイデア段階。デモに走らず、まずは設計を固める)。
 
 ## 研究の進め方 (ロードマップ)
 
