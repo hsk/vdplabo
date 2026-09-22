@@ -42,7 +42,7 @@ R-Type風ゲーム制作の実験(敵/背景描画・キーフレームアニメ
 この動画は `sprite/test/expected/sc1_sp08_openmsx.webm` を README から直接再生する例です。
 
 <video controls preload="metadata" width="960" playsinline>
-  <source src="https://raw.githubusercontent.com/hsk/vdplabo/main/sprite/test/expected/sc1_sp08_openmsx.webm" type="video/webm">
+  <source src="https://hsk.github.io/vdplabo/sprite/test/expected/sc1_sp08_openmsx.webm" type="video/webm">
   お使いのブラウザは video タグをサポートしていません。
 </video>
 
