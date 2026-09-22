@@ -21,3 +21,6 @@ openMSXでROMを実行して録画したものを`scN_spNN_openmsx.webm`とし�
 
 パレット・背景色(R#7)はopenMSXで実測した値をエンジンに反映済みのため、
 `sc1_sp01_openmsx.webm`はpython版とビット完全一致することを確認済みです。
+
+<video src="sc1_sp01_openmsx.webm" controls width="640" height="480"></video>
+<video src="sc1_sp02_openmsx.webm" controls width="640" height="480"></video>
