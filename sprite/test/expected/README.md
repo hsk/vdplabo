@@ -22,13 +22,21 @@ openMSXでROMを実行して録画したものを`scN_spNN_openmsx.webm`とし�
 パレット・背景色(R#7)はopenMSXで実測した値をエンジンに反映済みのため、
 `sc1_sp01_openmsx.webm`はpython版とビット完全一致することを確認済みです。
 
+![sc1_sp01.png](sc1_sp01.png)
+![sc1_sp08.png](sc1_sp08.png)
+
+----
+
 <div><video controls src="https://github.com/hsk/vdplabo/raw/refs/heads/main/sprite/test/expected/sc1_sp01_openmsx.webm" muted="false" width="640" height="480"></video></div>
 
 <div><video controls src="https://raw.githubusercontent.com/hsk/vdplabo/refs/heads/main/sprite/test/expected/sc1_sp01.mp4" muted="false" width="640" height="480"></video></div>
 
 <div><video controls src="https://raw.githubusercontent.com/hsk/vdplabo/refs/heads/main/sprite/test/expected/sc1_sp01.mp4" muted="false"></video></div>
 
+----
+
 [sc1_sp08_openmsx.webm](https://github.com/user-attachments/assets/73e23f20-d43a-4ce3-a12e-1cd1a292ba11)
 
-![sc1_sp01.png](sc1_sp01.png)
-![sc1_sp08.png](sc1_sp08.png)
+----
+
+[sc1_sp08_openmsx.webm](sc1_sp08_openmsx.webm)
