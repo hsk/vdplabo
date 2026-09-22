@@ -27,9 +27,9 @@ openMSXでROMを実行して録画したものを`scN_spNN_openmsx.webm`とし�
 
 ----
 
-<div><video controls src="https://hsk.github.io/vdplabo/sprite/test/expected/sc1_sp01_openmsx.mp4" muted="false" width="640" height="480"></video></div>
+<div><video controls src="https://hsk.github.io/vdplabo/sprite/test/expected/sc1_sp01.mp4" muted="false" width="640" height="480"></video></div>
 
-<div><video controls src="https://hsk.github.io/vdplabo/sprite/test/expected/sc1_sp08_openmsx.webm" muted="false" width="640" height="480"></video></div>
+<div><video controls src="sc1_sp08_openmsx.webm" muted="false" width="640" height="480"></video></div>
 
 <div><video controls src="https://hsk.github.io/vdplabo/sprite/test/expected/sc1_sp08_openmsx.webm" muted="false"></video></div>
 
