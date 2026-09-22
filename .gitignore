@@ -14,3 +14,6 @@ __pycache__/
 
 # capture_openmsx.pyが実行のたびにデバッグ用に書き出すTclスクリプト
 sprite/test/asm/out.tcl
+
+# Animoria cache & staged cleanup
+.animoria/
