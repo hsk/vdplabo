@@ -29,9 +29,6 @@ run_%:
 show-path:
 	openmsx -command "puts \"=== 録画データの保存先 ===\"; puts [file join $$env(OPENMSX_USER_DATA) \"captures\"]; quit"
 
-capture:
-	python3 capture_openmsx.py rom/$(ROM).rom -o ../expected/$(ROM)_openmsx.webm
-
 # SETTLE/DURATIONはフレーム数(--settle-frames/--duration-frames)で指定する。
 # 秒指定だと期待値のフレーム数にちょうど合わせるのに半端な小数(例: 139/60秒)
 # が必要になり扱いにくいため。
@@ -70,12 +67,16 @@ captest_sc1_sp06 capture_sc1_sp06: DURATION = 139
 
 # sc4(SCREEN4/192ライン)はsc5(SCREEN5/212ライン)とVBLANKタイミングが異なるため、
 # ROM側の5フレーム周期境界に噛み合うSETTLE値も違う(実測: sc5=13, sc4=15)。
-captest_sc5_sp01 capture_sc5_sp01 cap_sc5_sp01: SETTLE = 15
-captest_sc5_sp02 capture_sc5_sp02 cap_sc5_sp02: SETTLE = 15
 captest_sc4_sp01 capture_sc4_sp01 cap_sc4_sp01: SETTLE = 15
 captest_sc4_sp02 capture_sc4_sp02 cap_sc4_sp02: SETTLE = 15
 
+captest_sc5_sp01 capture_sc5_sp01 cap_sc5_sp01: SETTLE = 15
+captest_sc5_sp02 capture_sc5_sp02 cap_sc5_sp02: SETTLE = 15
+captest_sc5_sp06 capture_sc5_sp06 cap_sc5_sp06: DURATION = 200
+captest_sc5_sp07 capture_sc5_sp07 cap_sc5_sp07: DURATION = 256
+
 captest_sc7_sp01 capture_sc7_sp01: SETTLE = 40
+
 
 # 全ROMをビルドし直してopenMSXキャプチャ(../expected/*_openmsx.webm)を
 # 撮り直す(capture_%を全ターゲット分まわすだけ。SETTLE/DURATIONの
